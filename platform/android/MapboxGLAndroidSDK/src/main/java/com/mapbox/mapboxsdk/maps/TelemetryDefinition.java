@@ -1,5 +1,7 @@
 package com.mapbox.mapboxsdk.maps;
 
+import com.mapbox.mapboxsdk.offline.OfflineRegionDefinition;
+
 /**
  * Definition of TelemetryImpl collection
  */
@@ -37,4 +39,6 @@ public interface TelemetryDefinition {
    * @return true if rotation session id was updated
    */
   boolean setSessionIdRotationInterval(int interval);
+
+  void onCreateMapOfflineRegion(OfflineRegionDefinition offlineDefinition);
 }

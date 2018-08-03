@@ -8,11 +8,16 @@ import com.mapbox.android.telemetry.MapState;
 import com.mapbox.android.telemetry.MapboxTelemetry;
 import com.mapbox.android.telemetry.SessionInterval;
 import com.mapbox.android.telemetry.TelemetryEnabler;
+import com.mapbox.geojson.Geometry;
 import com.mapbox.mapboxsdk.BuildConfig;
 import com.mapbox.mapboxsdk.MapStrictMode;
 import com.mapbox.mapboxsdk.Mapbox;
+import com.mapbox.mapboxsdk.geometry.LatLngBounds;
 import com.mapbox.mapboxsdk.log.Logger;
 import com.mapbox.mapboxsdk.maps.TelemetryDefinition;
+import com.mapbox.mapboxsdk.offline.OfflineGeometryRegionDefinition;
+import com.mapbox.mapboxsdk.offline.OfflineRegionDefinition;
+import com.mapbox.mapboxsdk.offline.OfflineTilePyramidRegionDefinition;
 
 import java.lang.reflect.Field;
 
@@ -107,6 +112,26 @@ public class TelemetryImpl implements TelemetryDefinition {
   @Override
   public boolean setSessionIdRotationInterval(int interval) {
     return telemetry.updateSessionIdRotationInterval(new SessionInterval(interval));
+  }
+
+  @Override
+  public void onCreateMapOfflineRegion(OfflineRegionDefinition offlineDefinition) {
+    MapEventFactory mapEventFactory = new MapEventFactory();
+
+    Event mapOfflineEvent;
+    if (offlineDefinition instanceof OfflineTilePyramidRegionDefinition) {
+      OfflineTilePyramidRegionDefinition tileDefinition =
+        (OfflineTilePyramidRegionDefinition)offlineDefinition;
+      mapOfflineEvent = mapEventFactory.buildMapOfflineEvent(
+        tileDefinition.getMinZoom(), tileDefinition.getMaxZoom(), "bounds",
+        new String[]{tileDefinition.getStyleURL()});
+    } else {
+      OfflineGeometryRegionDefinition geometryDefinition =
+        (OfflineGeometryRegionDefinition) offlineDefinition;
+      mapOfflineEvent = mapEventFactory.buildMapOfflineEvent(
+        geometryDefinition.getMinZoom(), geometryDefinition.getMaxZoom(), geometryDefinition.getGeometry().type(),
+        new String[]{geometryDefinition.getStyleURL()});
+    }
   }
 
   /**
