@@ -219,7 +219,9 @@ void OfflineDownload::activateDownload() {
     status = OfflineRegionStatus();
     status.downloadState = OfflineRegionDownloadState::Active;
     status.requiredResourceCount++;
-    ensureResource(Resource::style(definition.match([](auto& reg){ return reg.styleURL; })),
+    Resource resource = Resource::style(definition.match([](auto& reg){ return reg.styleURL; }));
+    resource.setLowPriority();
+    ensureResource(resource,
                    [&](Response styleResponse) {
         status.requiredResourceCountIsPrecise = true;
 
@@ -238,7 +240,9 @@ void OfflineDownload::activateDownload() {
                     status.requiredResourceCount++;
                     requiredSourceURLs.insert(url);
 
-                    ensureResource(Resource::source(url), [=](Response sourceResponse) {
+                    Resource source_resource = Resource::source(url);
+                    source_resource.setLowPriority();
+                    ensureResource(source_resource, [=](Response sourceResponse) {
                         style::conversion::Error error;
                         optional<Tileset> tileset = style::conversion::convertJSON<Tileset>(*sourceResponse.data, error);
                         if (tileset) {
@@ -353,6 +357,7 @@ void OfflineDownload::deactivateDownload() {
 }
 
 void OfflineDownload::queueResource(Resource resource) {
+    resource.setLowPriority();
     status.requiredResourceCount++;
     resourcesRemaining.push_front(std::move(resource));
 }
@@ -360,14 +365,18 @@ void OfflineDownload::queueResource(Resource resource) {
 void OfflineDownload::queueTiles(SourceType type, uint16_t tileSize, const Tileset& tileset) {
     tileCover(definition, type, tileSize, tileset.zoomRange, [&](const auto& tile) {
         status.requiredResourceCount++;
-        resourcesRemaining.push_back(Resource::tile(
+        auto r = Resource::tile(
             tileset.tiles[0], definition.match([](auto& def) { return def.pixelRatio; }), tile.x,
-            tile.y, tile.z, tileset.scheme));
+            tile.y, tile.z, tileset.scheme);
+        r.setLowPriority();
+        resourcesRemaining.push_back(r);
     });
 }
 
 void OfflineDownload::ensureResource(const Resource& resource,
                                      std::function<void(Response)> callback) {
+    assert(resource.isLowPriority);
+
     auto workRequestsIt = requests.insert(requests.begin(), nullptr);
     *workRequestsIt = util::RunLoop::Get()->invokeCancellable([=]() {
         requests.erase(workRequestsIt);
