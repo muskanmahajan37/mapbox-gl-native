@@ -425,3 +425,44 @@ TEST(OnlineFileSource, ChangeAPIBaseURL){
     fs.setAPIBaseURL(customURL);
     EXPECT_EQ(customURL, fs.getAPIBaseURL());
 }
+
+
+TEST(OnlineFileSource, TEST_REQUIRES_SERVER(LowHighPriorityRequests)) {
+    util::RunLoop loop;
+    OnlineFileSource fs;
+    std::size_t response_counter = 0;
+    NetworkStatus::Set(NetworkStatus::Status::Offline);
+
+    std::vector<Resource> resources = {
+        { Resource::Unknown, "http://127.0.0.1:3000/test-low-priority-resource" },
+        { Resource::Unknown, "http://127.0.0.1:3000/test" },
+        { Resource::Unknown, "http://127.0.0.1:3000/test" }
+    };
+    resources[0].setLowPriority();
+
+    std::unique_ptr<AsyncRequest> req_0 = fs.request(resources[0], [&](Response res) {
+        response_counter++;
+        req_0.reset();
+        ASSERT_TRUE(res.data.get());
+        EXPECT_EQ("This is a low priority response", *res.data);
+        EXPECT_EQ(response_counter, resources.size()); // make sure this is responded last
+        loop.stop();
+    });
+
+    std::unique_ptr<AsyncRequest> req_1 = fs.request(resources[1], [&](Response res) {
+        response_counter++;
+        req_1.reset();
+        ASSERT_TRUE(res.data.get());
+        EXPECT_EQ("Hello World!", *res.data);
+    });
+
+    std::unique_ptr<AsyncRequest> req_2 = fs.request(resources[2], [&](Response res) {
+        response_counter++;
+        req_2.reset();
+        ASSERT_TRUE(res.data.get());
+        EXPECT_EQ("Hello World!", *res.data);
+    });
+
+    NetworkStatus::Set(NetworkStatus::Status::Online);
+    loop.run();
+}

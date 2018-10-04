@@ -32,6 +32,22 @@ app.get('/test', function (req, res) {
     res.send('Hello World!');
 });
 
+app.get('/test-low-priority-resource', function (req, res) {
+    if (req.query.modified) {
+        res.setHeader('Last-Modified', (new Date(req.query.modified * 1000)).toUTCString());
+    }
+    if (req.query.expires) {
+        res.setHeader('Expires', (new Date(req.query.expires * 1000)).toUTCString());
+    }
+    if (req.query.etag) {
+        res.setHeader('ETag', req.query.etag);
+    }
+    if (req.query.cachecontrol) {
+        res.setHeader('Cache-Control', req.query.cachecontrol);
+    }
+    res.send('This is a low priority response');
+});
+
 app.get('/stale/*', function() {
     // Never respond.
 });
