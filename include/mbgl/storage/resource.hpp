@@ -49,8 +49,11 @@ public:
         : kind(kind_),
           loadingMethod(loadingMethod_),
           url(std::move(url_)),
+          isLowPriority(false),
           tileData(std::move(tileData_)) {
     }
+
+    void setLowPriority() { isLowPriority = true; }
 
     bool hasLoadingMethod(LoadingMethod method);
 
@@ -69,10 +72,11 @@ public:
     static Resource spriteImage(const std::string& base, float pixelRatio);
     static Resource spriteJSON(const std::string& base, float pixelRatio);
     static Resource image(const std::string& url);
-    
+
     Kind kind;
     LoadingMethod loadingMethod;
     std::string url;
+    bool isLowPriority;
 
     // Includes auxiliary data if this is a tile request.
     optional<TileData> tileData;

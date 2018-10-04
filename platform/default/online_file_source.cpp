@@ -60,6 +60,7 @@ public:
     optional<Timestamp> retryAfter;
 };
 
+
 class OnlineFileSource::Impl {
 public:
     Impl() {
@@ -89,13 +90,9 @@ public:
         if (activeRequests.erase(request)) {
             activatePendingRequest();
         } else {
-            auto it = pendingRequestsMap.find(request);
-            if (it != pendingRequestsMap.end()) {
-                pendingRequestsList.erase(it->second);
-                pendingRequestsMap.erase(it);
-            }
+            pendingRequests.remove(request);
         }
-        assert(pendingRequestsMap.size() == pendingRequestsList.size());
+        pendingRequests.assertSizes();
     }
 
     void activateOrQueueRequest(OnlineFileRequest* request) {
@@ -111,9 +108,7 @@ public:
     }
 
     void queueRequest(OnlineFileRequest* request) {
-        auto it = pendingRequestsList.insert(pendingRequestsList.end(), request);
-        pendingRequestsMap.emplace(request, std::move(it));
-        assert(pendingRequestsMap.size() == pendingRequestsList.size());
+        pendingRequests.insert(request);
     }
 
     void activateRequest(OnlineFileRequest* request) {
@@ -135,25 +130,21 @@ public:
             callback(response);
         }
 
-        assert(pendingRequestsMap.size() == pendingRequestsList.size());
+        pendingRequests.assertSizes();
     }
 
     void activatePendingRequest() {
-        if (pendingRequestsList.empty()) {
+        if (pendingRequests.empty()) {
             return;
         }
 
-        OnlineFileRequest* request = pendingRequestsList.front();
-        pendingRequestsList.pop_front();
-
-        pendingRequestsMap.erase(request);
+        OnlineFileRequest* request = pendingRequests.pop();
 
         activateRequest(request);
-        assert(pendingRequestsMap.size() == pendingRequestsList.size());
     }
 
     bool isPending(OnlineFileRequest* request) {
-        return pendingRequestsMap.find(request) != pendingRequestsMap.end();
+        return pendingRequests.contains(request);
     }
 
     bool isActive(OnlineFileRequest* request) {
@@ -176,6 +167,66 @@ private:
         }
     }
 
+    struct PendingRequests {
+        // initialize two pending queues: a high priority queue for "regular" requests and a low priority queue for offline download requests
+        // the high priority requests are in prioritizedPendingRequests*[0]
+        // the low priority requests are in prioritizedPendingRequests*[1]
+        // context: https://github.com/mapbox/mapbox-gl-native/issues/12655
+        PendingRequests() : prioritizedPendingRequestsList(2), prioritizedPendingRequestsMap(2) {}
+
+        std::vector<std::list<OnlineFileRequest*>> prioritizedPendingRequestsList;
+        std::vector<std::unordered_map<OnlineFileRequest*, std::list<OnlineFileRequest*>::iterator>> prioritizedPendingRequestsMap;
+
+        void remove(OnlineFileRequest* request) {
+            auto it = prioritizedPendingRequestsMap[0].find(request);
+            if (it != prioritizedPendingRequestsMap[0].end()) {
+                prioritizedPendingRequestsList[0].erase(it->second);
+                prioritizedPendingRequestsMap[0].erase(it);
+            }
+            else {
+                it = prioritizedPendingRequestsMap[1].find(request);
+                if (it != prioritizedPendingRequestsMap[1].end()) {
+                    prioritizedPendingRequestsList[1].erase(it->second);
+                    prioritizedPendingRequestsMap[1].erase(it);
+                }
+            }
+            assertSizes();
+        }
+
+        void insert(OnlineFileRequest* request) {
+            std::size_t priority = request->resource.isLowPriority;
+            auto it = prioritizedPendingRequestsList[priority].insert(prioritizedPendingRequestsList[priority].end(), request);
+            prioritizedPendingRequestsMap[priority].emplace(request, std::move(it));
+            assertSizes();
+        }
+
+        bool empty() {
+            return prioritizedPendingRequestsList[0].empty() && prioritizedPendingRequestsList[1].empty();
+        }
+
+        OnlineFileRequest* pop() {
+            assert(!empty());
+            std::size_t next_priority = !prioritizedPendingRequestsList[0].empty() ? 0 : 1;
+
+            OnlineFileRequest* request = prioritizedPendingRequestsList[next_priority].front();
+            prioritizedPendingRequestsList[next_priority].pop_front();
+            prioritizedPendingRequestsMap[next_priority].erase(request);
+            return request;
+
+            assertSizes();
+        }
+
+        bool contains(OnlineFileRequest* request) {
+            return prioritizedPendingRequestsMap[0].find(request) != prioritizedPendingRequestsMap[0].end() ||
+                   prioritizedPendingRequestsMap[1].find(request) != prioritizedPendingRequestsMap[1].end();
+        }
+
+        void assertSizes() {
+            assert(prioritizedPendingRequestsMap[0].size() == prioritizedPendingRequestsList[0].size());
+            assert(prioritizedPendingRequestsMap[1].size() == prioritizedPendingRequestsList[1].size());
+        }
+    };
+
     optional<ActorRef<ResourceTransform>> resourceTransform;
 
     /**
@@ -190,8 +241,9 @@ private:
      * `pendingRequests`. Requests in the active state are in `activeRequests`.
      */
     std::unordered_set<OnlineFileRequest*> allRequests;
-    std::list<OnlineFileRequest*> pendingRequestsList;
-    std::unordered_map<OnlineFileRequest*, std::list<OnlineFileRequest*>::iterator> pendingRequestsMap;
+
+    PendingRequests pendingRequests;
+
     std::unordered_set<OnlineFileRequest*> activeRequests;
 
     bool online = true;
