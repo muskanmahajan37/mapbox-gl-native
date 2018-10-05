@@ -375,7 +375,7 @@ void OfflineDownload::queueTiles(SourceType type, uint16_t tileSize, const Tiles
 
 void OfflineDownload::ensureResource(const Resource& resource,
                                      std::function<void(Response)> callback) {
-    assert(resource.isLowPriority);
+    assert(resource.isLowPriority == 1);
 
     auto workRequestsIt = requests.insert(requests.begin(), nullptr);
     *workRequestsIt = util::RunLoop::Get()->invokeCancellable([=]() {

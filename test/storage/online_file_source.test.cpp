@@ -427,42 +427,36 @@ TEST(OnlineFileSource, ChangeAPIBaseURL){
 }
 
 
-// TEST(OnlineFileSource, TEST_REQUIRES_SERVER(LowHighPriorityRequests)) {
-//     util::RunLoop loop;
-//     OnlineFileSource fs;
-//     std::size_t response_counter = 0;
-//     NetworkStatus::Set(NetworkStatus::Status::Offline);
+TEST(OnlineFileSource, TEST_REQUIRES_SERVER(LowHighPriorityRequests)) {
+    util::RunLoop loop;
+    OnlineFileSource fs;
+    std::size_t response_counter = 0;
+    std::size_t NUM_REQUESTS = 3;
 
-//     std::vector<Resource> resources = {
-//         { Resource::Unknown, "http://127.0.0.1:3000/test-low-priority-resource" },
-//         { Resource::Unknown, "http://127.0.0.1:3000/test" },
-//         { Resource::Unknown, "http://127.0.0.1:3000/test" }
-//     };
-//     resources[0].setLowPriority();
+    NetworkStatus::Set(NetworkStatus::Status::Offline);
 
-//     std::unique_ptr<AsyncRequest> req_0 = fs.request(resources[0], [&](Response res) {
-//         response_counter++;
-//         req_0.reset();
-//         ASSERT_TRUE(res.data.get());
-//         EXPECT_EQ("This is a low priority response", *res.data);
-//         EXPECT_EQ(response_counter, resources.size()); // make sure this is responded last
-//         loop.stop();
-//     });
+    // requesting a low priority resource
+    Resource low_prio{ Resource::Unknown, "http://127.0.0.1:3000/test" };
+    low_prio.setLowPriority();
+    std::unique_ptr<AsyncRequest> req_0 = fs.request(low_prio, [&](Response) {
+        response_counter++;
+        req_0.reset();
+        EXPECT_EQ(response_counter, NUM_REQUESTS); // make sure this is responded last
+        loop.stop();
+    });
 
-//     std::unique_ptr<AsyncRequest> req_1 = fs.request(resources[1], [&](Response res) {
-//         response_counter++;
-//         req_1.reset();
-//         ASSERT_TRUE(res.data.get());
-//         EXPECT_EQ("Hello World!", *res.data);
-//     });
+    // requesting two "regular" resources
+    Resource regular{ Resource::Unknown, "http://127.0.0.1:3000/test" };
+    std::unique_ptr<AsyncRequest> req_1 = fs.request(regular, [&](Response) {
+        response_counter++;
+        req_1.reset();
+    });
+    std::unique_ptr<AsyncRequest> req_2 = fs.request(regular, [&](Response) {
+        response_counter++;
+        req_2.reset();
+    });
 
-//     std::unique_ptr<AsyncRequest> req_2 = fs.request(resources[2], [&](Response res) {
-//         response_counter++;
-//         req_2.reset();
-//         ASSERT_TRUE(res.data.get());
-//         EXPECT_EQ("Hello World!", *res.data);
-//     });
+    NetworkStatus::Set(NetworkStatus::Status::Online);
 
-//     NetworkStatus::Set(NetworkStatus::Status::Online);
-//     loop.run();
-// }
+    loop.run();
+}
