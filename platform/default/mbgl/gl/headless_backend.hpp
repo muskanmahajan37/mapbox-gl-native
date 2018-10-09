@@ -1,6 +1,7 @@
 #pragma once
 
 #include <mbgl/renderer/renderer_backend.hpp>
+#include <mbgl/renderer/external_objects.hpp>
 
 #include <memory>
 #include <functional>
@@ -10,6 +11,7 @@ namespace mbgl {
 class HeadlessBackend : public RendererBackend {
 public:
     HeadlessBackend(Size = { 256, 256 });
+    HeadlessBackend(Size, void* app_instance, gl::ExternalTextureAllocateCB allocate_cb, gl::ExternalTextureFreeCB free_cb);
     ~HeadlessBackend() override;
 
     void bind() override;
@@ -45,6 +47,7 @@ private:
 
     class View;
     std::unique_ptr<View> view;
+    bool viewUseTextureMemoryExternal = false;
 };
 
 } // namespace mbgl

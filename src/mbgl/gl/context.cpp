@@ -3,6 +3,7 @@
 #include <mbgl/gl/debugging_extension.hpp>
 #include <mbgl/gl/vertex_array_extension.hpp>
 #include <mbgl/gl/program_binary_extension.hpp>
+#include <mbgl/gl/external_objects_extension.hpp>
 #include <mbgl/util/traits.hpp>
 #include <mbgl/util/std.hpp>
 #include <mbgl/util/logging.hpp>
@@ -55,6 +56,7 @@ static_assert(std::is_same<TextureID, GLuint>::value, "OpenGL type mismatch");
 static_assert(std::is_same<VertexArrayID, GLuint>::value, "OpenGL type mismatch");
 static_assert(std::is_same<FramebufferID, GLuint>::value, "OpenGL type mismatch");
 static_assert(std::is_same<RenderbufferID, GLuint>::value, "OpenGL type mismatch");
+static_assert(std::is_same<MemoryObjectID, GLuint>::value, "OpenGL type mismatch");
 
 static_assert(std::is_same<std::underlying_type_t<TextureFormat>, GLenum>::value, "OpenGL type mismatch");
 static_assert(underlying_type(TextureFormat::RGBA) == GL_RGBA, "OpenGL type mismatch");
@@ -152,6 +154,8 @@ void Context::initializeExtensions(const std::function<gl::ProcAddress(const cha
 #if MBGL_HAS_BINARY_PROGRAMS
         programBinary = std::make_unique<extension::ProgramBinary>(fn);
 #endif
+
+        externalObjects = std::make_unique<extension::ExternalObjects>(fn);
 
 #if MBGL_USE_GLES2
         constexpr const char* halfFloatExtensionName = "OES_texture_half_float";
@@ -304,6 +308,13 @@ UniqueTexture Context::createTexture() {
     TextureID id = pooledTextures.back();
     pooledTextures.pop_back();
     return UniqueTexture{ std::move(id), { this } };
+}
+
+UniqueMemoryObject Context::createMemoryObject() {
+    MemoryObjectID id = 0;
+    MBGL_CHECK_ERROR(externalObjects->createMemoryObjects(1, &id));
+    UniqueMemoryObject result { std::move(id), { this } };
+    return result;
 }
 
 bool Context::supportsVertexArrays() const {
@@ -533,10 +544,15 @@ Context::createFramebuffer(const Texture& color,
 }
 
 UniqueTexture
-Context::createTexture(const Size size, const void* data, TextureFormat format, TextureUnit unit, TextureType type) {
+Context::createTexture(const Size size,
+                       const void* data,
+                       TextureFormat format,
+                       TextureUnit unit,
+                       TextureType type,
+                       TextureMemory memory) {
     auto obj = createTexture();
     pixelStoreUnpack = { 1 };
-    updateTexture(obj, size, data, format, unit, type);
+    updateTexture(obj, size, data, format, unit, type, memory);
     // We are using clamp to edge here since OpenGL ES doesn't allow GL_REPEAT on NPOT textures.
     // We use those when the pixelRatio isn't a power of two, e.g. on iPhone 6 Plus.
     MBGL_CHECK_ERROR(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
@@ -546,13 +562,39 @@ Context::createTexture(const Size size, const void* data, TextureFormat format, 
     return obj;
 }
 
-void Context::updateTexture(
-    TextureID id, const Size size, const void* data, TextureFormat format, TextureUnit unit, TextureType type) {
+void Context::updateTexture(TextureID id,
+                            const Size size,
+                            const void* data,
+                            TextureFormat format,
+                            TextureUnit unit,
+                            TextureType type,
+                            TextureMemory memory) {
     activeTextureUnit = unit;
     texture[unit] = id;
-    MBGL_CHECK_ERROR(glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLenum>(format), size.width,
-                                  size.height, 0, static_cast<GLenum>(format), static_cast<GLenum>(type),
-                                  data));
+    if (memory == TextureMemory::External) {
+        // we only support RGBA8/empty for now
+        assert(format == TextureFormat::RGBA);
+        assert(type == TextureType::UnsignedByte);
+        assert(data == nullptr);
+        // call the external allocator (which must have been registered) which returns an FD
+        assert(external_texture_app_instance);
+        assert(external_texture_allocate_cb);
+        int fd = external_texture_allocate_cb(external_texture_app_instance, size.width, size.height);
+        // create a GL memory object and import that FD
+        auto memory_object = createMemoryObject();
+        uint64_t num_bytes = size.width * size.height * 4;
+        MBGL_CHECK_ERROR(externalObjects->importMemoryFd(memory_object, num_bytes, GL_HANDLE_TYPE_OPAQUE_FD_EXT, fd));
+        // create the texture around that memory object
+#if not MBGL_USE_GLES2
+        MBGL_CHECK_ERROR(externalObjects->texStorageMem2D(GL_TEXTURE_2D, 1, GL_RGBA8, size.width, size.height, memory_object, 0));
+#else
+        MBGL_CHECK_ERROR(externalObjects->texStorageMem2D(GL_TEXTURE_2D, 1, GL_RGBA8_OES, size.width, size.height, memory_object, 0));
+#endif
+    } else {
+        MBGL_CHECK_ERROR(glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLenum>(format), size.width,
+                                      size.height, 0, static_cast<GLenum>(format), static_cast<GLenum>(type),
+                                      data));
+    }
 }
 
 void Context::bindTexture(Texture& obj,
@@ -826,6 +868,12 @@ void Context::performCleanup() {
         MBGL_CHECK_ERROR(glDeleteRenderbuffers(int(abandonedRenderbuffers.size()),
                                                abandonedRenderbuffers.data()));
         abandonedRenderbuffers.clear();
+    }
+
+    if (!abandonedMemoryObjects.empty()) {
+        MBGL_CHECK_ERROR(externalObjects->deleteMemoryObjects(int(abandonedMemoryObjects.size()),
+                                               abandonedMemoryObjects.data()));
+        abandonedMemoryObjects.clear();
     }
 }
 

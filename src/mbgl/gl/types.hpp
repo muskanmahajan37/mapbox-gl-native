@@ -14,6 +14,7 @@ using TextureID = uint32_t;
 using VertexArrayID = uint32_t;
 using FramebufferID = uint32_t;
 using RenderbufferID = uint32_t;
+using MemoryObjectID = uint32_t;
 
 // OpenGL does not formally define a type for attribute locations, but most APIs use
 // GLuint. The exception is glGetAttribLocation, which returns GLint so that -1 can
@@ -55,6 +56,7 @@ enum class RenderbufferType : uint32_t {
 enum class TextureMipMap : bool { No = false, Yes = true };
 enum class TextureFilter : bool { Nearest = false, Linear = true };
 enum class TextureWrap : bool { Clamp, Repeat };
+enum class TextureMemory : bool { Local, External };
 enum class TextureFormat : uint32_t {
     RGBA = 0x1908,
     Alpha = 0x1906,

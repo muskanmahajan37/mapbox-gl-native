@@ -46,6 +46,11 @@ struct RenderbufferDeleter {
     void operator()(RenderbufferID) const;
 };
 
+struct MemoryObjectDeleter {
+    Context* context;
+    void operator()(MemoryObjectID) const;
+};
+
 } // namespace detail
 
 using UniqueProgram = std_experimental::unique_resource<ProgramID, detail::ProgramDeleter>;
@@ -55,6 +60,7 @@ using UniqueTexture = std_experimental::unique_resource<TextureID, detail::Textu
 using UniqueVertexArray = std_experimental::unique_resource<VertexArrayID, detail::VertexArrayDeleter>;
 using UniqueFramebuffer = std_experimental::unique_resource<FramebufferID, detail::FramebufferDeleter>;
 using UniqueRenderbuffer = std_experimental::unique_resource<RenderbufferID, detail::RenderbufferDeleter>;
+using UniqueMemoryObject = std_experimental::unique_resource<MemoryObjectID, detail::MemoryObjectDeleter>;
 
 } // namespace gl
 } // namespace mbgl

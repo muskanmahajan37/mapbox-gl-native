@@ -26,6 +26,21 @@ HeadlessFrontend::HeadlessFrontend(Size size_, float pixelRatio_, FileSource& fi
     renderer(std::make_unique<Renderer>(backend, pixelRatio, fileSource, scheduler, mode, programCacheDir, localFontFamily)) {
 }
 
+HeadlessFrontend::HeadlessFrontend(Size size_, float pixelRatio_, FileSource& fileSource, Scheduler& scheduler, void* app_instance, gl::ExternalTextureAllocateCB allocate_cb, gl::ExternalTextureFreeCB free_cb)
+    : size(size_),
+    pixelRatio(pixelRatio_),
+    backend({ static_cast<uint32_t>(size.width * pixelRatio),
+              static_cast<uint32_t>(size.height * pixelRatio) },
+            app_instance, allocate_cb, free_cb),
+    asyncInvalidate([this] {
+        if (renderer && updateParameters) {
+            mbgl::BackendScope guard { backend };
+            renderer->render(*updateParameters);
+        }
+    }),
+    renderer(std::make_unique<Renderer>(backend, pixelRatio, fileSource, scheduler)) {
+}
+
 HeadlessFrontend::~HeadlessFrontend() = default;
 
 void HeadlessFrontend::reset() {

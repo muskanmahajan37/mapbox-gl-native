@@ -16,6 +16,7 @@
 #include <mbgl/gl/stencil_mode.hpp>
 #include <mbgl/gl/color_mode.hpp>
 #include <mbgl/util/noncopyable.hpp>
+#include <mbgl/renderer/external_objects.hpp>
 
 
 #include <functional>
@@ -34,6 +35,7 @@ namespace extension {
 class VertexArray;
 class Debugging;
 class ProgramBinary;
+class ExternalObjects;
 } // namespace extension
 
 class Context {
@@ -148,8 +150,9 @@ public:
     Texture createTexture(const Size size,
                           TextureFormat format = TextureFormat::RGBA,
                           TextureUnit unit = 0,
-                          TextureType type = TextureType::UnsignedByte) {
-        return { size, createTexture(size, nullptr, format, unit, type) };
+                          TextureType type = TextureType::UnsignedByte,
+                          TextureMemory memory = TextureMemory::Local) {
+        return { size, createTexture(size, nullptr, format, unit, type, memory) };
     }
 
     void bindTexture(Texture&,
@@ -193,7 +196,8 @@ public:
             && abandonedBuffers.empty()
             && abandonedTextures.empty()
             && abandonedVertexArrays.empty()
-            && abandonedFramebuffers.empty();
+            && abandonedFramebuffers.empty()
+            && abandonedMemoryObjects.empty();
     }
 
     void setDirtyState();
@@ -210,6 +214,12 @@ public:
         cleanupOnDestruction = cleanup;
     }
 
+    void setExternalTextureCallbacks(void* app_instance, ExternalTextureAllocateCB allocate_cb, ExternalTextureFreeCB free_cb) {
+        external_texture_app_instance = app_instance;
+        external_texture_allocate_cb = allocate_cb;
+        external_texture_free_cb = free_cb;
+    }
+
 private:
     bool cleanupOnDestruction = true;
 
@@ -218,6 +228,7 @@ private:
 #if MBGL_HAS_BINARY_PROGRAMS
     std::unique_ptr<extension::ProgramBinary> programBinary;
 #endif
+    std::unique_ptr<extension::ExternalObjects> externalObjects;
 
 public:
     State<value::ActiveTextureUnit> activeTextureUnit;
@@ -275,8 +286,9 @@ private:
     void updateVertexBuffer(UniqueBuffer& buffer, const void* data, std::size_t size);
     UniqueBuffer createIndexBuffer(const void* data, std::size_t size, const BufferUsage usage);
     void updateIndexBuffer(UniqueBuffer& buffer, const void* data, std::size_t size);
-    UniqueTexture createTexture(Size size, const void* data, TextureFormat, TextureUnit, TextureType);
-    void updateTexture(TextureID, Size size, const void* data, TextureFormat, TextureUnit, TextureType);
+    UniqueTexture createTexture(Size size, const void* data, TextureFormat, TextureUnit, TextureType, TextureMemory memory = TextureMemory::Local);
+    void updateTexture(TextureID, Size size, const void* data, TextureFormat, TextureUnit, TextureType, TextureMemory memory = TextureMemory::Local);
+    UniqueMemoryObject createMemoryObject();
     UniqueFramebuffer createFramebuffer();
     UniqueRenderbuffer createRenderbuffer(RenderbufferType, Size size);
     std::unique_ptr<uint8_t[]> readFramebuffer(Size, TextureFormat, bool flip);
@@ -293,6 +305,7 @@ private:
     friend detail::VertexArrayDeleter;
     friend detail::FramebufferDeleter;
     friend detail::RenderbufferDeleter;
+    friend detail::MemoryObjectDeleter;
 
     std::vector<TextureID> pooledTextures;
 
@@ -303,6 +316,11 @@ private:
     std::vector<VertexArrayID> abandonedVertexArrays;
     std::vector<FramebufferID> abandonedFramebuffers;
     std::vector<RenderbufferID> abandonedRenderbuffers;
+    std::vector<MemoryObjectID> abandonedMemoryObjects;
+
+    void* external_texture_app_instance = nullptr;
+    ExternalTextureAllocateCB external_texture_allocate_cb = nullptr;
+    ExternalTextureFreeCB external_texture_free_cb = nullptr;
 
 public:
     // For testing

@@ -48,6 +48,11 @@ void RenderbufferDeleter::operator()(RenderbufferID id) const {
     context->abandonedRenderbuffers.push_back(id);
 }
 
+void MemoryObjectDeleter::operator()(MemoryObjectID id) const {
+    assert(context);
+    context->abandonedMemoryObjects.push_back(id);
+}
+
 } // namespace detail
 } // namespace gl
 } // namespace mbgl

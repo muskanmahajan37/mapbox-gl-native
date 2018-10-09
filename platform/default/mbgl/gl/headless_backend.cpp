@@ -10,19 +10,26 @@ namespace mbgl {
 
 class HeadlessBackend::View {
 public:
-    View(gl::Context& context, Size size_)
-        : color(context.createRenderbuffer<gl::RenderbufferType::RGBA>(size_)),
+    View(gl::Context& context, Size size_, bool useTextureMemoryExternal)
+        : color(context.createTexture(size_, gl::TextureFormat::RGBA, 0, gl::TextureType::UnsignedByte, useTextureMemoryExternal ? gl::TextureMemory::External : gl::TextureMemory::Local)),
           depthStencil(context.createRenderbuffer<gl::RenderbufferType::DepthStencil>(size_)),
           framebuffer(context.createFramebuffer(color, depthStencil)) {
     }
 
-    gl::Renderbuffer<gl::RenderbufferType::RGBA> color;
+    gl::Texture color;
     gl::Renderbuffer<gl::RenderbufferType::DepthStencil> depthStencil;
     gl::Framebuffer framebuffer;
 };
 
 HeadlessBackend::HeadlessBackend(Size size_)
     : size(size_) {
+}
+
+HeadlessBackend::HeadlessBackend(Size size_, void* app_instance, gl::ExternalTextureAllocateCB allocate_cb, gl::ExternalTextureFreeCB free_cb)
+    : size(size_) {
+  BackendScope guard { *this };
+  getContext().setExternalTextureCallbacks(app_instance, allocate_cb, free_cb);
+  viewUseTextureMemoryExternal = true;
 }
 
 HeadlessBackend::~HeadlessBackend() {
@@ -57,7 +64,7 @@ void HeadlessBackend::bind() {
     gl::Context& context_ = getContext();
 
     if (!view) {
-        view = std::make_unique<View>(context_, size);
+        view = std::make_unique<View>(context_, size, viewUseTextureMemoryExternal);
     }
 
     context_.bindFramebuffer = view->framebuffer.framebuffer;
