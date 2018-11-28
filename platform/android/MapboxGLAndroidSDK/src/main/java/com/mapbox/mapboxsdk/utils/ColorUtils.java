@@ -14,6 +14,7 @@ import com.mapbox.mapboxsdk.R;
 import com.mapbox.mapboxsdk.exceptions.ConversionException;
 
 import java.text.DecimalFormat;
+import java.text.NumberFormat;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -122,7 +123,7 @@ public class ColorUtils {
    * @throws ConversionException on illegal input
    */
   @ColorInt
-  public static int rgbaToColor(String value) {
+  public static int rgbaToColor(@NonNull String value) {
     Pattern c = Pattern.compile("rgba?\\s*\\(\\s*(\\d+\\.?\\d*)\\s*,\\s*(\\d+\\.?\\d*)\\s*,\\s*(\\d+\\.?\\d*)\\s*,"
       + "?\\s*(\\d+\\.?\\d*)?\\s*\\)");
     Matcher m = c.matcher(value);
@@ -147,7 +148,10 @@ public class ColorUtils {
    * @return String rgba color
    */
   public static String colorToRgbaString(@ColorInt int color) {
-    String alpha = new DecimalFormat("#.###").format(((float) ((color >> 24) & 0xFF)) / 255.0f);
+    NumberFormat numberFormat = NumberFormat.getNumberInstance(Locale.US);
+    DecimalFormat decimalFormat = (DecimalFormat) numberFormat;
+    decimalFormat.applyPattern("#.###");
+    String alpha = decimalFormat.format(((float) ((color >> 24) & 0xFF)) / 255.0f);
     return String.format(Locale.US, "rgba(%d, %d, %d, %s)",
       (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, alpha);
   }
@@ -189,7 +193,7 @@ public class ColorUtils {
     };
   }
 
-  private static int getColorCompat(Context context, int id) {
+  private static int getColorCompat(@NonNull Context context, int id) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
       return context.getResources().getColor(id, context.getTheme());
     } else {

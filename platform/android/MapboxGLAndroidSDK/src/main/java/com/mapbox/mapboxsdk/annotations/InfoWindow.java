@@ -4,6 +4,8 @@ import android.content.res.Resources;
 import android.graphics.PointF;
 import android.os.Build;
 import android.support.annotation.LayoutRes;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -19,15 +21,14 @@ import com.mapbox.mapboxsdk.maps.MapboxMap;
 import java.lang.ref.WeakReference;
 
 /**
- * {@code InfoWindow} is a tooltip shown when a {@link Marker} or {@link MarkerView} is tapped. Only
+ * {@code InfoWindow} is a tooltip shown when a {@link Marker} is tapped. Only
  * one info window is displayed at a time. When the user clicks on a marker, the currently open info
  * window will be closed and the new info window will be displayed. If the user clicks the same
  * marker while its info window is currently open, the info window will be closed.
  * <p>
  * The info window is drawn oriented against the device's screen, centered above its associated
- * marker by default. The info window anchoring can be adjusted using
- * {@link MarkerView#setInfoWindowAnchor(float, float)} for {@link MarkerView}. The default info
- * window contains the title in bold and snippet text below the title. While either the title and
+ * marker by default. The default info window contains the title in bold and snippet text below the title.
+ * While either the title and
  * snippet are optional, at least one is required to open the info window.
  * </p>
  */
@@ -53,11 +54,11 @@ public class InfoWindow {
     initialize(view, mapboxMap);
   }
 
-  InfoWindow(View view, MapboxMap mapboxMap) {
+  InfoWindow(@NonNull View view, MapboxMap mapboxMap) {
     initialize(view, mapboxMap);
   }
 
-  private void initialize(View view, MapboxMap mapboxMap) {
+  private void initialize(@NonNull View view, MapboxMap mapboxMap) {
     this.mapboxMap = new WeakReference<>(mapboxMap);
     isVisible = false;
     this.view = new WeakReference<>(view);
@@ -116,7 +117,8 @@ public class InfoWindow {
    *                    the view from the object position.
    * @return this {@link InfoWindow}.
    */
-  InfoWindow open(MapView mapView, Marker boundMarker, LatLng position, int offsetX, int offsetY) {
+  @NonNull
+  InfoWindow open(@NonNull MapView mapView, Marker boundMarker, @NonNull LatLng position, int offsetX, int offsetY) {
     setBoundMarker(boundMarker);
 
     MapView.LayoutParams lp = new MapView.LayoutParams(MapView.LayoutParams.WRAP_CONTENT,
@@ -213,6 +215,7 @@ public class InfoWindow {
    *
    * @return This {@link InfoWindow}
    */
+  @NonNull
   InfoWindow close() {
     MapboxMap mapboxMap = this.mapboxMap.get();
     if (isVisible && mapboxMap != null) {
@@ -239,7 +242,7 @@ public class InfoWindow {
    *
    * @param overlayItem the tapped overlay item
    */
-  void adaptDefaultMarker(Marker overlayItem, MapboxMap mapboxMap, MapView mapView) {
+  void adaptDefaultMarker(@NonNull Marker overlayItem, MapboxMap mapboxMap, @NonNull MapView mapView) {
     View view = this.view.get();
     if (view == null) {
       view = LayoutInflater.from(mapView.getContext()).inflate(layoutRes, mapView, false);
@@ -265,11 +268,13 @@ public class InfoWindow {
     }
   }
 
+  @NonNull
   InfoWindow setBoundMarker(Marker boundMarker) {
     this.boundMarker = new WeakReference<>(boundMarker);
     return this;
   }
 
+  @Nullable
   Marker getBoundMarker() {
     if (boundMarker == null) {
       return null;
@@ -307,6 +312,7 @@ public class InfoWindow {
     }
   }
 
+  @Nullable
   private final ViewTreeObserver.OnGlobalLayoutListener contentUpdateListener =
     new ViewTreeObserver.OnGlobalLayoutListener() {
       @Override
@@ -329,6 +335,7 @@ public class InfoWindow {
    *
    * @return This {@link InfoWindow}'s current View.
    */
+  @Nullable
   public View getView() {
     return view != null ? view.get() : null;
   }

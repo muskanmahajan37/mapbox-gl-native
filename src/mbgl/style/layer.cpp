@@ -5,16 +5,7 @@
 #include <mbgl/style/conversion/filter.hpp>
 #include <mbgl/style/conversion_impl.hpp>
 
-#include <mbgl/style/layers/symbol_layer.hpp>
-#include <mbgl/style/layers/background_layer.hpp>
-#include <mbgl/style/layers/circle_layer.hpp>
-#include <mbgl/style/layers/fill_extrusion_layer.hpp>
-#include <mbgl/style/layers/fill_layer.hpp>
-#include <mbgl/style/layers/heatmap_layer.hpp>
-#include <mbgl/style/layers/hillshade_layer.hpp>
-#include <mbgl/style/layers/line_layer.hpp>
-#include <mbgl/style/layers/raster_layer.hpp>
-#include <mbgl/style/layers/symbol_layer.hpp>
+#include <mbgl/renderer/render_layer.hpp>
 
 namespace mbgl {
 namespace style {
@@ -27,10 +18,6 @@ Layer::Layer(Immutable<Impl> impl)
 }
 
 Layer::~Layer() = default;
-
-LayerType Layer::getType() const {
-    return baseImpl->type;
-}
 
 std::string Layer::getID() const {
     return baseImpl->id;
@@ -118,7 +105,13 @@ optional<conversion::Error> Layer::setVisibility(const conversion::Convertible& 
     return nullopt;
 }
 
-optional<std::string> LayerFactory::getSource(const conversion::Convertible& value) const {
+const LayerTypeInfo* Layer::getTypeInfo() const noexcept {
+    return baseImpl->getTypeInfo();
+}
+
+} // namespace style
+
+optional<std::string> LayerFactory::getSource(const style::conversion::Convertible& value) const noexcept {
     auto sourceValue = objectMember(value, "source");
     if (!sourceValue) {
         return nullopt;
@@ -132,7 +125,7 @@ optional<std::string> LayerFactory::getSource(const conversion::Convertible& val
     return source;
 }
 
-bool LayerFactory::initSourceLayerAndFilter(Layer* layer, const conversion::Convertible& value) const {
+bool LayerFactory::initSourceLayerAndFilter(style::Layer* layer, const style::conversion::Convertible& value) const noexcept {
     auto sourceLayerValue = objectMember(value, "source-layer");
     if (sourceLayerValue) {
         optional<std::string> sourceLayer = toString(*sourceLayerValue);
@@ -144,8 +137,8 @@ bool LayerFactory::initSourceLayerAndFilter(Layer* layer, const conversion::Conv
 
     auto filterValue = objectMember(value, "filter");
     if (filterValue) {
-        conversion::Error error;
-        optional<Filter> filter = conversion::convert<Filter>(*filterValue, error);
+        style::conversion::Error error;
+        optional<style::Filter> filter = style::conversion::convert<style::Filter>(*filterValue, error);
         if (!filter) {
             return false;
         }
@@ -155,52 +148,25 @@ bool LayerFactory::initSourceLayerAndFilter(Layer* layer, const conversion::Conv
     return true;
 }
 
-// TODO: Move the LayerManager implementation to the dedicated .cpp file per platform.
-class LayerManagerImpl : public LayerManager {
-public:
-    void addLayerFactory(LayerFactory* factory) {
-        factories.emplace(std::make_pair(factory->type(), std::unique_ptr<LayerFactory>(factory)));
-    }
-private:
-    // LayerManager overrides.
-    std::unique_ptr<Layer> createLayer(const std::string& type, const std::string& id, const conversion::Convertible& value, conversion::Error& error) final;
-
-    std::unordered_map<std::string, std::unique_ptr<LayerFactory>> factories;
-};
-
-std::unique_ptr<Layer> LayerManagerImpl::createLayer(const std::string& type, const std::string& id, const conversion::Convertible& value, conversion::Error& error) {
-    auto search = factories.find(type);
-    if (search != factories.end()) {
-        if (auto layer = search->second->createLayer(id, value)) {
-            return layer;
+std::unique_ptr<style::Layer> LayerManager::createLayer(
+    const std::string& type, const std::string& id,
+    const style::conversion::Convertible& value, style::conversion::Error& error) noexcept {
+    if (LayerFactory* factory = getFactory(type)) {
+        auto layer = factory->createLayer(id, value);
+        if (!layer) {
+            error.message = "Error parsing a layer of type: " + type;
         }
-        error.message = "Error parsing a layer of type: " + type;
-    } else {
-        error.message = "Unsupported layer type: " + type;
+        return layer;
     }
+    error.message = "Unsupported layer type: " + type;
     return nullptr;
 }
 
-// static 
-LayerManager* LayerManager::get() {
-    static LayerManager* instance = nullptr;
-    if (instance == nullptr) {
-       static LayerManagerImpl impl;
-       impl.addLayerFactory(new FillLayerFactory);
-       impl.addLayerFactory(new LineLayerFactory);
-       impl.addLayerFactory(new CircleLayerFactory);
-       impl.addLayerFactory(new SymbolLayerFactory);
-       impl.addLayerFactory(new RasterLayerFactory);
-       impl.addLayerFactory(new BackgroundLayerFactory);
-       impl.addLayerFactory(new HillshadeLayerFactory);
-       impl.addLayerFactory(new FillExtrusionLayerFactory);
-       impl.addLayerFactory(new HeatmapLayerFactory);
-
-       instance = &impl;
-    }
-    return instance;
+std::unique_ptr<RenderLayer> LayerManager::createRenderLayer(Immutable<style::Layer::Impl> impl) noexcept {
+    LayerFactory* factory = getFactory(impl->getTypeInfo());
+    assert(factory);
+    return factory->createRenderLayer(std::move(impl));
 }
 
 
-} // namespace style
 } // namespace mbgl

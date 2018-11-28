@@ -2,8 +2,19 @@
 #include <mbgl/style/layers/custom_layer_impl.hpp>
 #include <mbgl/style/layer_observer.hpp>
 
+#include <mbgl/renderer/layers/render_custom_layer.hpp>
+
 namespace mbgl {
 namespace style {
+
+namespace {
+    const LayerTypeInfo typeInfoCustom
+    { "",
+      LayerTypeInfo::Source::NotRequired,
+      LayerTypeInfo::Pass3D::NotRequired,
+      LayerTypeInfo::Layout::NotRequired,
+      LayerTypeInfo::Clipping::NotRequired };
+}  // namespace
 
 CustomLayer::CustomLayer(const std::string& layerID,
                          std::unique_ptr<CustomLayerHost> host)
@@ -39,5 +50,24 @@ Mutable<Layer::Impl> CustomLayer::mutableBaseImpl() const {
     return staticMutableCast<Layer::Impl>(mutableImpl());
 }
 
+// static
+const LayerTypeInfo* CustomLayer::Impl::staticTypeInfo() noexcept {
+    return &typeInfoCustom;
+}
+
 } // namespace style
+
+const style::LayerTypeInfo* CustomLayerFactory::getTypeInfo() const noexcept {
+    return &style::typeInfoCustom;
+}
+
+std::unique_ptr<style::Layer> CustomLayerFactory::createLayer(const std::string&, const style::conversion::Convertible&) noexcept {
+    assert(false);
+    return nullptr;
+}
+
+std::unique_ptr<RenderLayer> CustomLayerFactory::createRenderLayer(Immutable<style::Layer::Impl> impl) noexcept {
+    return std::make_unique<RenderCustomLayer>(staticImmutableCast<style::CustomLayer::Impl>(std::move(impl)));
+}
+
 } // namespace mbgl

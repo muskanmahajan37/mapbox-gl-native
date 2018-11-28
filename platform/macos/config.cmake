@@ -1,5 +1,3 @@
-set(CMAKE_OSX_DEPLOYMENT_TARGET 10.11)
-
 include(cmake/loop-darwin.cmake)
 
 macro(mbgl_platform_core)
@@ -115,6 +113,7 @@ endmacro()
 
 macro(mbgl_platform_test)
     target_sources(mbgl-test
+        PRIVATE platform/default/layer_manager.cpp
         PRIVATE platform/default/mbgl/test/main.cpp
     )
 
@@ -136,6 +135,7 @@ endmacro()
 
 macro(mbgl_platform_benchmark)
     target_sources(mbgl-benchmark
+        PRIVATE platform/default/layer_manager.cpp
         PRIVATE benchmark/src/main.cpp
     )
 
@@ -152,6 +152,9 @@ macro(mbgl_platform_benchmark)
 endmacro()
 
 macro(mbgl_platform_node)
+    target_sources(mbgl-core
+        PRIVATE platform/default/layer_manager.cpp
+    )
     target_link_libraries(mbgl-node INTERFACE
         -exported_symbols_list ${CMAKE_SOURCE_DIR}/platform/node/symbol-list
         -dead_strip

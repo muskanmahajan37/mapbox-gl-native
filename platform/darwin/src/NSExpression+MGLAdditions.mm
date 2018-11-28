@@ -46,7 +46,7 @@ const MGLExpressionInterpolationMode MGLExpressionInterpolationModeCubicBezier =
     
     // Effectively categorize the class with some extra class methods.
     Class NSPredicateUtilities = objc_getMetaClass(className.UTF8String);
-#pragma clang push
+#pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wundeclared-selector"
     #define INSTALL_METHOD(sel) \
         { \
@@ -85,7 +85,7 @@ const MGLExpressionInterpolationMode MGLExpressionInterpolationModeCubicBezier =
     INSTALL_CONTROL_STRUCTURE(MGL_FUNCTION);
     
     #undef INSTALL_AFTERMARKET_FN
-#pragma clang pop
+#pragma clang diagnostic pop
 }
 
 /**
@@ -1117,14 +1117,14 @@ NSArray *MGLSubexpressionsWithJSONObjects(NSArray *objects) {
                             format:@"Casting expression to %@ not yet implemented.", type];
             } else if ([function isEqualToString:@"MGL_FUNCTION"] ||
                        [function isEqualToString:@"MGL_FUNCTION:"]) {
-                NSExpression *op = self.arguments.firstObject;
-                if (op.expressionType == NSConstantValueExpressionType
-                    && [op.constantValue isEqualToString:@"collator"]) {
+                NSExpression *firstOp = self.arguments.firstObject;
+                if (firstOp.expressionType == NSConstantValueExpressionType
+                    && [firstOp.constantValue isEqualToString:@"collator"]) {
                     // Avoid wrapping collator options object in literal expression.
                     return @[@"collator", self.arguments[1].constantValue];
                 }
-                if (op.expressionType == NSConstantValueExpressionType
-                    && [op.constantValue isEqualToString:@"format"]) {
+                if (firstOp.expressionType == NSConstantValueExpressionType
+                    && [firstOp.constantValue isEqualToString:@"format"]) {
                     // Avoid wrapping format options object in literal expression.
                     return @[@"format", self.arguments[1].mgl_jsonExpressionObject, self.arguments[2].constantValue];
                 }

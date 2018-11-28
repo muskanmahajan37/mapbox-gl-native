@@ -1,10 +1,19 @@
 package com.mapbox.mapboxsdk.maps;
 
+import com.google.common.util.concurrent.ExecutionError;
+import com.mapbox.mapboxsdk.log.Logger;
+import com.mapbox.mapboxsdk.log.LoggerDefinition;
+
+import junit.framework.Assert;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -52,6 +61,9 @@ public class MapChangeReceiverTest {
   @Mock
   private MapView.OnSourceChangedListener onSourceChangedListener;
 
+  @Mock
+  private LoggerDefinition loggerDefinition;
+
   @Before
   public void beforeTest() {
     MockitoAnnotations.initMocks(this);
@@ -63,9 +75,30 @@ public class MapChangeReceiverTest {
     mapChangeEventManager.addOnCameraWillChangeListener(onCameraWillChangeListener);
     mapChangeEventManager.onCameraWillChange(false);
     verify(onCameraWillChangeListener).onCameraWillChange(false);
+
     mapChangeEventManager.removeOnCameraWillChangeListener(onCameraWillChangeListener);
     mapChangeEventManager.onCameraWillChange(false);
     verify(onCameraWillChangeListener).onCameraWillChange(false);
+
+    mapChangeEventManager.addOnCameraWillChangeListener(onCameraWillChangeListener);
+    Logger.setLoggerDefinition(loggerDefinition);
+    Exception exc = new RuntimeException();
+    doThrow(exc).when(onCameraWillChangeListener).onCameraWillChange(false);
+    try {
+      mapChangeEventManager.onCameraWillChange(false);
+      Assert.fail("The exception should've been re-thrown.");
+    } catch (RuntimeException throwable) {
+      verify(loggerDefinition).e(anyString(), anyString(), eq(exc));
+    }
+
+    Error err = new ExecutionError("", new Error());
+    doThrow(err).when(onCameraWillChangeListener).onCameraWillChange(false);
+    try {
+      mapChangeEventManager.onCameraWillChange(false);
+      Assert.fail("The exception should've been re-thrown.");
+    } catch (ExecutionError throwable) {
+      verify(loggerDefinition).e(anyString(), anyString(), eq(err));
+    }
   }
 
   @Test
@@ -76,6 +109,26 @@ public class MapChangeReceiverTest {
     mapChangeEventManager.removeOnCameraWillChangeListener(onCameraWillChangeListener);
     mapChangeEventManager.onCameraWillChange(true);
     verify(onCameraWillChangeListener).onCameraWillChange(true);
+
+    mapChangeEventManager.addOnCameraWillChangeListener(onCameraWillChangeListener);
+    Logger.setLoggerDefinition(loggerDefinition);
+    Exception exc = new RuntimeException();
+    doThrow(exc).when(onCameraWillChangeListener).onCameraWillChange(true);
+    try {
+      mapChangeEventManager.onCameraWillChange(true);
+      Assert.fail("The exception should've been re-thrown.");
+    } catch (RuntimeException throwable) {
+      verify(loggerDefinition).e(anyString(), anyString(), eq(exc));
+    }
+
+    Error err = new ExecutionError("", new Error());
+    doThrow(err).when(onCameraWillChangeListener).onCameraWillChange(true);
+    try {
+      mapChangeEventManager.onCameraWillChange(true);
+      Assert.fail("The exception should've been re-thrown.");
+    } catch (ExecutionError throwable) {
+      verify(loggerDefinition).e(anyString(), anyString(), eq(err));
+    }
   }
 
   @Test
@@ -86,6 +139,26 @@ public class MapChangeReceiverTest {
     mapChangeEventManager.removeOnCameraIsChangingListener(onCameraIsChangingListener);
     mapChangeEventManager.onCameraIsChanging();
     verify(onCameraIsChangingListener).onCameraIsChanging();
+
+    mapChangeEventManager.addOnCameraIsChangingListener(onCameraIsChangingListener);
+    Logger.setLoggerDefinition(loggerDefinition);
+    Exception exc = new RuntimeException();
+    doThrow(exc).when(onCameraIsChangingListener).onCameraIsChanging();
+    try {
+      mapChangeEventManager.onCameraIsChanging();
+      Assert.fail("The exception should've been re-thrown.");
+    } catch (RuntimeException throwable) {
+      verify(loggerDefinition).e(anyString(), anyString(), eq(exc));
+    }
+
+    Error err = new ExecutionError("", new Error());
+    doThrow(err).when(onCameraIsChangingListener).onCameraIsChanging();
+    try {
+      mapChangeEventManager.onCameraIsChanging();
+      Assert.fail("The exception should've been re-thrown.");
+    } catch (ExecutionError throwable) {
+      verify(loggerDefinition).e(anyString(), anyString(), eq(err));
+    }
   }
 
   @Test
@@ -96,6 +169,26 @@ public class MapChangeReceiverTest {
     mapChangeEventManager.removeOnCameraDidChangeListener(onCameraDidChangeListener);
     mapChangeEventManager.onCameraDidChange(false);
     verify(onCameraDidChangeListener).onCameraDidChange(false);
+
+    mapChangeEventManager.addOnCameraDidChangeListener(onCameraDidChangeListener);
+    Logger.setLoggerDefinition(loggerDefinition);
+    Exception exc = new RuntimeException();
+    doThrow(exc).when(onCameraDidChangeListener).onCameraDidChange(false);
+    try {
+      mapChangeEventManager.onCameraDidChange(false);
+      Assert.fail("The exception should've been re-thrown.");
+    } catch (RuntimeException throwable) {
+      verify(loggerDefinition).e(anyString(), anyString(), eq(exc));
+    }
+
+    Error err = new ExecutionError("", new Error());
+    doThrow(err).when(onCameraDidChangeListener).onCameraDidChange(false);
+    try {
+      mapChangeEventManager.onCameraDidChange(false);
+      Assert.fail("The exception should've been re-thrown.");
+    } catch (ExecutionError throwable) {
+      verify(loggerDefinition).e(anyString(), anyString(), eq(err));
+    }
   }
 
   @Test
@@ -106,6 +199,26 @@ public class MapChangeReceiverTest {
     mapChangeEventManager.removeOnCameraDidChangeListener(onCameraDidChangeListener);
     mapChangeEventManager.onCameraDidChange(true);
     verify(onCameraDidChangeListener).onCameraDidChange(true);
+
+    mapChangeEventManager.addOnCameraDidChangeListener(onCameraDidChangeListener);
+    Logger.setLoggerDefinition(loggerDefinition);
+    Exception exc = new RuntimeException();
+    doThrow(exc).when(onCameraDidChangeListener).onCameraDidChange(true);
+    try {
+      mapChangeEventManager.onCameraDidChange(true);
+      Assert.fail("The exception should've been re-thrown.");
+    } catch (RuntimeException throwable) {
+      verify(loggerDefinition).e(anyString(), anyString(), eq(exc));
+    }
+
+    Error err = new ExecutionError("", new Error());
+    doThrow(err).when(onCameraDidChangeListener).onCameraDidChange(true);
+    try {
+      mapChangeEventManager.onCameraDidChange(true);
+      Assert.fail("The exception should've been re-thrown.");
+    } catch (ExecutionError throwable) {
+      verify(loggerDefinition).e(anyString(), anyString(), eq(err));
+    }
   }
 
   @Test
@@ -116,6 +229,26 @@ public class MapChangeReceiverTest {
     mapChangeEventManager.removeOnWillStartLoadingMapListener(onWillStartLoadingMapListener);
     mapChangeEventManager.onWillStartLoadingMap();
     verify(onWillStartLoadingMapListener).onWillStartLoadingMap();
+
+    mapChangeEventManager.addOnWillStartLoadingMapListener(onWillStartLoadingMapListener);
+    Logger.setLoggerDefinition(loggerDefinition);
+    Exception exc = new RuntimeException();
+    doThrow(exc).when(onWillStartLoadingMapListener).onWillStartLoadingMap();
+    try {
+      mapChangeEventManager.onWillStartLoadingMap();
+      Assert.fail("The exception should've been re-thrown.");
+    } catch (RuntimeException throwable) {
+      verify(loggerDefinition).e(anyString(), anyString(), eq(exc));
+    }
+
+    Error err = new ExecutionError("", new Error());
+    doThrow(err).when(onWillStartLoadingMapListener).onWillStartLoadingMap();
+    try {
+      mapChangeEventManager.onWillStartLoadingMap();
+      Assert.fail("The exception should've been re-thrown.");
+    } catch (ExecutionError throwable) {
+      verify(loggerDefinition).e(anyString(), anyString(), eq(err));
+    }
   }
 
   @Test
@@ -126,6 +259,26 @@ public class MapChangeReceiverTest {
     mapChangeEventManager.removeOnDidFinishLoadingMapListener(onDidFinishLoadingMapListener);
     mapChangeEventManager.onDidFinishLoadingMap();
     verify(onDidFinishLoadingMapListener).onDidFinishLoadingMap();
+
+    mapChangeEventManager.addOnDidFinishLoadingMapListener(onDidFinishLoadingMapListener);
+    Logger.setLoggerDefinition(loggerDefinition);
+    Exception exc = new RuntimeException();
+    doThrow(exc).when(onDidFinishLoadingMapListener).onDidFinishLoadingMap();
+    try {
+      mapChangeEventManager.onDidFinishLoadingMap();
+      Assert.fail("The exception should've been re-thrown.");
+    } catch (RuntimeException throwable) {
+      verify(loggerDefinition).e(anyString(), anyString(), eq(exc));
+    }
+
+    Error err = new ExecutionError("", new Error());
+    doThrow(err).when(onDidFinishLoadingMapListener).onDidFinishLoadingMap();
+    try {
+      mapChangeEventManager.onDidFinishLoadingMap();
+      Assert.fail("The exception should've been re-thrown.");
+    } catch (ExecutionError throwable) {
+      verify(loggerDefinition).e(anyString(), anyString(), eq(err));
+    }
   }
 
   @Test
@@ -136,6 +289,26 @@ public class MapChangeReceiverTest {
     mapChangeEventManager.removeOnDidFailLoadingMapListener(onDidFailLoadingMapListener);
     mapChangeEventManager.onDidFailLoadingMap(TEST_STRING);
     verify(onDidFailLoadingMapListener).onDidFailLoadingMap(TEST_STRING);
+
+    mapChangeEventManager.addOnDidFailLoadingMapListener(onDidFailLoadingMapListener);
+    Logger.setLoggerDefinition(loggerDefinition);
+    Exception exc = new RuntimeException();
+    doThrow(exc).when(onDidFailLoadingMapListener).onDidFailLoadingMap(TEST_STRING);
+    try {
+      mapChangeEventManager.onDidFailLoadingMap(TEST_STRING);
+      Assert.fail("The exception should've been re-thrown.");
+    } catch (RuntimeException throwable) {
+      verify(loggerDefinition).e(anyString(), anyString(), eq(exc));
+    }
+
+    Error err = new ExecutionError("", new Error());
+    doThrow(err).when(onDidFailLoadingMapListener).onDidFailLoadingMap(TEST_STRING);
+    try {
+      mapChangeEventManager.onDidFailLoadingMap(TEST_STRING);
+      Assert.fail("The exception should've been re-thrown.");
+    } catch (ExecutionError throwable) {
+      verify(loggerDefinition).e(anyString(), anyString(), eq(err));
+    }
   }
 
   @Test
@@ -146,6 +319,26 @@ public class MapChangeReceiverTest {
     mapChangeEventManager.removeOnWillStartRenderingFrameListener(onWillStartRenderingFrameListener);
     mapChangeEventManager.onWillStartRenderingFrame();
     verify(onWillStartRenderingFrameListener).onWillStartRenderingFrame();
+
+    mapChangeEventManager.addOnWillStartRenderingFrameListener(onWillStartRenderingFrameListener);
+    Logger.setLoggerDefinition(loggerDefinition);
+    Exception exc = new RuntimeException();
+    doThrow(exc).when(onWillStartRenderingFrameListener).onWillStartRenderingFrame();
+    try {
+      mapChangeEventManager.onWillStartRenderingFrame();
+      Assert.fail("The exception should've been re-thrown.");
+    } catch (RuntimeException throwable) {
+      verify(loggerDefinition).e(anyString(), anyString(), eq(exc));
+    }
+
+    Error err = new ExecutionError("", new Error());
+    doThrow(err).when(onWillStartRenderingFrameListener).onWillStartRenderingFrame();
+    try {
+      mapChangeEventManager.onWillStartRenderingFrame();
+      Assert.fail("The exception should've been re-thrown.");
+    } catch (ExecutionError throwable) {
+      verify(loggerDefinition).e(anyString(), anyString(), eq(err));
+    }
   }
 
   @Test
@@ -156,6 +349,26 @@ public class MapChangeReceiverTest {
     mapChangeEventManager.removeOnDidFinishRenderingFrameListener(onDidFinishRenderingFrameListener);
     mapChangeEventManager.onDidFinishRenderingFrame(true);
     verify(onDidFinishRenderingFrameListener).onDidFinishRenderingFrame(true);
+
+    mapChangeEventManager.addOnDidFinishRenderingFrameListener(onDidFinishRenderingFrameListener);
+    Logger.setLoggerDefinition(loggerDefinition);
+    Exception exc = new RuntimeException();
+    doThrow(exc).when(onDidFinishRenderingFrameListener).onDidFinishRenderingFrame(true);
+    try {
+      mapChangeEventManager.onDidFinishRenderingFrame(true);
+      Assert.fail("The exception should've been re-thrown.");
+    } catch (RuntimeException throwable) {
+      verify(loggerDefinition).e(anyString(), anyString(), eq(exc));
+    }
+
+    Error err = new ExecutionError("", new Error());
+    doThrow(err).when(onDidFinishRenderingFrameListener).onDidFinishRenderingFrame(true);
+    try {
+      mapChangeEventManager.onDidFinishRenderingFrame(true);
+      Assert.fail("The exception should've been re-thrown.");
+    } catch (ExecutionError throwable) {
+      verify(loggerDefinition).e(anyString(), anyString(), eq(err));
+    }
   }
 
   @Test
@@ -166,6 +379,26 @@ public class MapChangeReceiverTest {
     mapChangeEventManager.removeOnDidFinishRenderingFrameListener(onDidFinishRenderingFrameListener);
     mapChangeEventManager.onDidFinishRenderingFrame(false);
     verify(onDidFinishRenderingFrameListener).onDidFinishRenderingFrame(false);
+
+    mapChangeEventManager.addOnDidFinishRenderingFrameListener(onDidFinishRenderingFrameListener);
+    Logger.setLoggerDefinition(loggerDefinition);
+    Exception exc = new RuntimeException();
+    doThrow(exc).when(onDidFinishRenderingFrameListener).onDidFinishRenderingFrame(false);
+    try {
+      mapChangeEventManager.onDidFinishRenderingFrame(false);
+      Assert.fail("The exception should've been re-thrown.");
+    } catch (RuntimeException throwable) {
+      verify(loggerDefinition).e(anyString(), anyString(), eq(exc));
+    }
+
+    Error err = new ExecutionError("", new Error());
+    doThrow(err).when(onDidFinishRenderingFrameListener).onDidFinishRenderingFrame(false);
+    try {
+      mapChangeEventManager.onDidFinishRenderingFrame(false);
+      Assert.fail("The exception should've been re-thrown.");
+    } catch (ExecutionError throwable) {
+      verify(loggerDefinition).e(anyString(), anyString(), eq(err));
+    }
   }
 
   @Test
@@ -176,6 +409,26 @@ public class MapChangeReceiverTest {
     mapChangeEventManager.removeOnWillStartRenderingMapListener(onWillStartRenderingMapListener);
     mapChangeEventManager.onWillStartRenderingMap();
     verify(onWillStartRenderingMapListener).onWillStartRenderingMap();
+
+    mapChangeEventManager.addOnWillStartRenderingMapListener(onWillStartRenderingMapListener);
+    Logger.setLoggerDefinition(loggerDefinition);
+    Exception exc = new RuntimeException();
+    doThrow(exc).when(onWillStartRenderingMapListener).onWillStartRenderingMap();
+    try {
+      mapChangeEventManager.onWillStartRenderingMap();
+      Assert.fail("The exception should've been re-thrown.");
+    } catch (RuntimeException throwable) {
+      verify(loggerDefinition).e(anyString(), anyString(), eq(exc));
+    }
+
+    Error err = new ExecutionError("", new Error());
+    doThrow(err).when(onWillStartRenderingMapListener).onWillStartRenderingMap();
+    try {
+      mapChangeEventManager.onWillStartRenderingMap();
+      Assert.fail("The exception should've been re-thrown.");
+    } catch (ExecutionError throwable) {
+      verify(loggerDefinition).e(anyString(), anyString(), eq(err));
+    }
   }
 
   @Test
@@ -186,6 +439,26 @@ public class MapChangeReceiverTest {
     mapChangeEventManager.removeOnDidFinishRenderingMapListener(onDidFinishRenderingMapListener);
     mapChangeEventManager.onDidFinishRenderingMap(true);
     verify(onDidFinishRenderingMapListener).onDidFinishRenderingMap(true);
+
+    mapChangeEventManager.addOnDidFinishRenderingMapListener(onDidFinishRenderingMapListener);
+    Logger.setLoggerDefinition(loggerDefinition);
+    Exception exc = new RuntimeException();
+    doThrow(exc).when(onDidFinishRenderingMapListener).onDidFinishRenderingMap(true);
+    try {
+      mapChangeEventManager.onDidFinishRenderingMap(true);
+      Assert.fail("The exception should've been re-thrown.");
+    } catch (RuntimeException throwable) {
+      verify(loggerDefinition).e(anyString(), anyString(), eq(exc));
+    }
+
+    Error err = new ExecutionError("", new Error());
+    doThrow(err).when(onDidFinishRenderingMapListener).onDidFinishRenderingMap(true);
+    try {
+      mapChangeEventManager.onDidFinishRenderingMap(true);
+      Assert.fail("The exception should've been re-thrown.");
+    } catch (ExecutionError throwable) {
+      verify(loggerDefinition).e(anyString(), anyString(), eq(err));
+    }
   }
 
   @Test
@@ -196,6 +469,26 @@ public class MapChangeReceiverTest {
     mapChangeEventManager.removeOnDidFinishRenderingMapListener(onDidFinishRenderingMapListener);
     mapChangeEventManager.onDidFinishRenderingMap(false);
     verify(onDidFinishRenderingMapListener).onDidFinishRenderingMap(false);
+
+    mapChangeEventManager.addOnDidFinishRenderingMapListener(onDidFinishRenderingMapListener);
+    Logger.setLoggerDefinition(loggerDefinition);
+    Exception exc = new RuntimeException();
+    doThrow(exc).when(onDidFinishRenderingMapListener).onDidFinishRenderingMap(false);
+    try {
+      mapChangeEventManager.onDidFinishRenderingMap(false);
+      Assert.fail("The exception should've been re-thrown.");
+    } catch (RuntimeException throwable) {
+      verify(loggerDefinition).e(anyString(), anyString(), eq(exc));
+    }
+
+    Error err = new ExecutionError("", new Error());
+    doThrow(err).when(onDidFinishRenderingMapListener).onDidFinishRenderingMap(false);
+    try {
+      mapChangeEventManager.onDidFinishRenderingMap(false);
+      Assert.fail("The exception should've been re-thrown.");
+    } catch (ExecutionError throwable) {
+      verify(loggerDefinition).e(anyString(), anyString(), eq(err));
+    }
   }
 
   @Test
@@ -206,6 +499,26 @@ public class MapChangeReceiverTest {
     mapChangeEventManager.removeOnDidFinishLoadingStyleListener(onDidFinishLoadingStyleListener);
     mapChangeEventManager.onDidFinishLoadingStyle();
     verify(onDidFinishLoadingStyleListener).onDidFinishLoadingStyle();
+
+    mapChangeEventManager.addOnDidFinishLoadingStyleListener(onDidFinishLoadingStyleListener);
+    Logger.setLoggerDefinition(loggerDefinition);
+    Exception exc = new RuntimeException();
+    doThrow(exc).when(onDidFinishLoadingStyleListener).onDidFinishLoadingStyle();
+    try {
+      mapChangeEventManager.onDidFinishLoadingStyle();
+      Assert.fail("The exception should've been re-thrown.");
+    } catch (RuntimeException throwable) {
+      verify(loggerDefinition).e(anyString(), anyString(), eq(exc));
+    }
+
+    Error err = new ExecutionError("", new Error());
+    doThrow(err).when(onDidFinishLoadingStyleListener).onDidFinishLoadingStyle();
+    try {
+      mapChangeEventManager.onDidFinishLoadingStyle();
+      Assert.fail("The exception should've been re-thrown.");
+    } catch (ExecutionError throwable) {
+      verify(loggerDefinition).e(anyString(), anyString(), eq(err));
+    }
   }
 
   @Test
@@ -216,5 +529,25 @@ public class MapChangeReceiverTest {
     mapChangeEventManager.removeOnSourceChangedListener(onSourceChangedListener);
     mapChangeEventManager.onSourceChanged(TEST_STRING);
     verify(onSourceChangedListener).onSourceChangedListener(TEST_STRING);
+
+    mapChangeEventManager.addOnSourceChangedListener(onSourceChangedListener);
+    Logger.setLoggerDefinition(loggerDefinition);
+    Exception exc = new RuntimeException();
+    doThrow(exc).when(onSourceChangedListener).onSourceChangedListener(TEST_STRING);
+    try {
+      mapChangeEventManager.onSourceChanged(TEST_STRING);
+      Assert.fail("The exception should've been re-thrown.");
+    } catch (RuntimeException throwable) {
+      verify(loggerDefinition).e(anyString(), anyString(), eq(exc));
+    }
+
+    Error err = new ExecutionError("", new Error());
+    doThrow(err).when(onSourceChangedListener).onSourceChangedListener(TEST_STRING);
+    try {
+      mapChangeEventManager.onSourceChanged(TEST_STRING);
+      Assert.fail("The exception should've been re-thrown.");
+    } catch (ExecutionError throwable) {
+      verify(loggerDefinition).e(anyString(), anyString(), eq(err));
+    }
   }
 }

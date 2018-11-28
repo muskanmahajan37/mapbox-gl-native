@@ -13,6 +13,7 @@
 #import "MGLRasterStyleLayer.h"
 #import "MGLBackgroundStyleLayer.h"
 #import "MGLOpenGLStyleLayer.h"
+#import "MGLStyleLayerManager.h"
 
 #import "MGLSource.h"
 #import "MGLSource_Private.h"
@@ -25,22 +26,13 @@
 #import "MGLImageSource.h"
 
 #import "MGLAttributionInfo_Private.h"
+#import "MGLLoggingConfiguration_Private.h"
 
 #include <mbgl/map/map.hpp>
 #include <mbgl/util/default_styles.hpp>
 #include <mbgl/style/style.hpp>
 #include <mbgl/style/image.hpp>
 #include <mbgl/style/light.hpp>
-#include <mbgl/style/layers/fill_layer.hpp>
-#include <mbgl/style/layers/fill_extrusion_layer.hpp>
-#include <mbgl/style/layers/line_layer.hpp>
-#include <mbgl/style/layers/symbol_layer.hpp>
-#include <mbgl/style/layers/raster_layer.hpp>
-#include <mbgl/style/layers/heatmap_layer.hpp>
-#include <mbgl/style/layers/hillshade_layer.hpp>
-#include <mbgl/style/layers/circle_layer.hpp>
-#include <mbgl/style/layers/background_layer.hpp>
-#include <mbgl/style/layers/custom_layer.hpp>
 #include <mbgl/style/sources/geojson_source.hpp>
 #include <mbgl/style/sources/vector_source.hpp>
 #include <mbgl/style/sources/raster_source.hpp>
@@ -128,11 +120,13 @@ static_assert(6 == mbgl::util::default_styles::numOrderedStyles,
 #pragma mark -
 
 - (instancetype)initWithRawStyle:(mbgl::style::Style *)rawStyle mapView:(MGLMapView *)mapView {
+    MGLLogInfo(@"Initializing %@ with mapView: %@", NSStringFromClass([self class]), mapView);
     if (self = [super init]) {
         _mapView = mapView;
         _rawStyle = rawStyle;
         _openGLLayers = [NSMutableDictionary dictionary];
         _localizedLayersByIdentifier = [NSMutableDictionary dictionary];
+        MGLLogDebug(@"Initializing with style name: %@ mapView: %@", self.name, mapView);
     }
     return self;
 }
@@ -159,6 +153,7 @@ static_assert(6 == mbgl::util::default_styles::numOrderedStyles,
 }
 
 - (void)setSources:(NSSet<__kindof MGLSource *> *)sources {
+    MGLLogDebug(@"Setting: %lu sources", sources.count);
     for (MGLSource *source in self.sources) {
         [self removeSource:source];
     }
@@ -177,6 +172,7 @@ static_assert(6 == mbgl::util::default_styles::numOrderedStyles,
 
 - (MGLSource *)sourceWithIdentifier:(NSString *)identifier
 {
+    MGLLogDebug(@"Querying source with identifier: %@", identifier);
     auto rawSource = self.rawStyle->getSource(identifier.UTF8String);
     
     return rawSource ? [self sourceFromMBGLSource:rawSource] : nil;
@@ -206,6 +202,7 @@ static_assert(6 == mbgl::util::default_styles::numOrderedStyles,
 
 - (void)addSource:(MGLSource *)source
 {
+    MGLLogDebug(@"Adding source: %@", source);
     if (!source.rawSource) {
         [NSException raise:NSInvalidArgumentException format:
          @"The source %@ cannot be added to the style. "
@@ -222,14 +219,22 @@ static_assert(6 == mbgl::util::default_styles::numOrderedStyles,
 
 - (void)removeSource:(MGLSource *)source
 {
+    [self removeSource:source error:nil];
+}
+
+- (BOOL)removeSource:(MGLSource *)source error:(NSError * __nullable * __nullable)outError {
+    MGLLogDebug(@"Removing source: %@", source);
+    
     if (!source.rawSource) {
         [NSException raise:NSInvalidArgumentException format:
          @"The source %@ cannot be removed from the style. "
          @"Make sure the source was created as a member of a concrete subclass of MGLSource.",
          source];
     }
-    [source removeFromMapView:self.mapView];
+
+    return [source removeFromMapView:self.mapView error:outError];
 }
+
 
 - (nullable NSArray<MGLAttributionInfo *> *)attributionInfosWithFontSize:(CGFloat)fontSize linkColor:(nullable MGLColor *)linkColor {
     // It’d be incredibly convenient to use -sources here, but this operation
@@ -263,6 +268,7 @@ static_assert(6 == mbgl::util::default_styles::numOrderedStyles,
 }
 
 - (void)setLayers:(NSArray<__kindof MGLStyleLayer *> *)layers {
+    MGLLogDebug(@"Setting: %lu layers", layers.count);
     for (MGLStyleLayer *layer in self.layers) {
         [self removeLayer:layer];
     }
@@ -350,41 +356,20 @@ static_assert(6 == mbgl::util::default_styles::numOrderedStyles,
     if (MGLStyleLayer *layer = rawLayer->peer.has_value() ? rawLayer->peer.get<LayerWrapper>().layer : nil) {
         return layer;
     }
-    switch (rawLayer->getType()) {
-        case mbgl::style::LayerType::Fill:
-            return [[MGLFillStyleLayer alloc] initWithRawLayer:static_cast<mbgl::style::FillLayer*>(rawLayer)];
-        case mbgl::style::LayerType::FillExtrusion:
-            return [[MGLFillStyleLayer alloc] initWithRawLayer:static_cast<mbgl::style::FillExtrusionLayer*>(rawLayer)];
-        case mbgl::style::LayerType::Line:
-            return [[MGLFillStyleLayer alloc] initWithRawLayer:static_cast<mbgl::style::LineLayer*>(rawLayer)];
-        case mbgl::style::LayerType::Symbol:
-            return [[MGLFillStyleLayer alloc] initWithRawLayer:static_cast<mbgl::style::SymbolLayer*>(rawLayer)];
-        case mbgl::style::LayerType::Raster:
-            return [[MGLFillStyleLayer alloc] initWithRawLayer:static_cast<mbgl::style::RasterLayer*>(rawLayer)];
-        case mbgl::style::LayerType::Heatmap:
-            return [[MGLFillStyleLayer alloc] initWithRawLayer:static_cast<mbgl::style::HeatmapLayer*>(rawLayer)];
-        case mbgl::style::LayerType::Hillshade:
-            return [[MGLFillStyleLayer alloc] initWithRawLayer:static_cast<mbgl::style::HillshadeLayer*>(rawLayer)];
-        case mbgl::style::LayerType::Circle:
-            return [[MGLFillStyleLayer alloc] initWithRawLayer:static_cast<mbgl::style::CircleLayer*>(rawLayer)];
-        case mbgl::style::LayerType::Background:
-            return [[MGLFillStyleLayer alloc] initWithRawLayer:static_cast<mbgl::style::BackgroundLayer*>(rawLayer)];
-        case mbgl::style::LayerType::Custom:
-            return [[MGLFillStyleLayer alloc] initWithRawLayer:static_cast<mbgl::style::CustomLayer*>(rawLayer)];
-        default:
-            NSAssert(NO, @"Unrecognized layer type");
-            return nil;;
-    }
+
+    return mbgl::LayerManagerDarwin::get()->createPeer(rawLayer);
 }
 
 - (MGLStyleLayer *)layerWithIdentifier:(NSString *)identifier
 {
+    MGLLogDebug(@"Querying layerWithIdentifier: %@", identifier);
     auto mbglLayer = self.rawStyle->getLayer(identifier.UTF8String);
     return mbglLayer ? [self layerFromMBGLLayer:mbglLayer] : nil;
 }
 
 - (void)removeLayer:(MGLStyleLayer *)layer
 {
+    MGLLogDebug(@"Removing layer: %@", layer);
     if (!layer.rawLayer) {
         [NSException raise:NSInvalidArgumentException format:
          @"The style layer %@ cannot be removed from the style. "
@@ -398,6 +383,7 @@ static_assert(6 == mbgl::util::default_styles::numOrderedStyles,
 
 - (void)addLayer:(MGLStyleLayer *)layer
 {
+    MGLLogDebug(@"Adding layer: %@", layer);
     if (!layer.rawLayer) {
         [NSException raise:NSInvalidArgumentException format:
          @"The style layer %@ cannot be added to the style. "
@@ -419,6 +405,7 @@ static_assert(6 == mbgl::util::default_styles::numOrderedStyles,
 
 - (void)insertLayer:(MGLStyleLayer *)layer belowLayer:(MGLStyleLayer *)sibling
 {
+    MGLLogDebug(@"Inseting layer: %@ belowLayer: %@", layer, sibling);
     if (!layer.rawLayer) {
         [NSException raise:NSInvalidArgumentException
                     format:
@@ -443,6 +430,7 @@ static_assert(6 == mbgl::util::default_styles::numOrderedStyles,
 }
 
 - (void)insertLayer:(MGLStyleLayer *)layer aboveLayer:(MGLStyleLayer *)sibling {
+    MGLLogDebug(@"Inseting layer: %@ aboveLayer: %@", layer, sibling);
     if (!layer.rawLayer) {
         [NSException raise:NSInvalidArgumentException
                     format:
@@ -461,8 +449,8 @@ static_assert(6 == mbgl::util::default_styles::numOrderedStyles,
     auto layers = self.rawStyle->getLayers();
     std::string siblingIdentifier = sibling.identifier.UTF8String;
     NSUInteger index = 0;
-    for (auto layer : layers) {
-        if (layer->getID() == siblingIdentifier) {
+    for (auto siblingLayer : layers) {
+        if (siblingLayer->getID() == siblingIdentifier) {
             break;
         }
         index++;
@@ -482,9 +470,9 @@ static_assert(6 == mbgl::util::default_styles::numOrderedStyles,
             [NSException raise:MGLRedundantLayerIdentifierException format:@"%s", err.what()];
         }
     } else {
-        MGLStyleLayer *sibling = [self layerFromMBGLLayer:layers.at(index + 1)];
+        MGLStyleLayer *nextSibling = [self layerFromMBGLLayer:layers.at(index + 1)];
         try {
-            [layer addToStyle:self belowLayer:sibling];
+            [layer addToStyle:self belowLayer:nextSibling];
         } catch (std::runtime_error & err) {
             [NSException raise:MGLRedundantLayerIdentifierException format:@"%s", err.what()];
         }
@@ -496,6 +484,7 @@ static_assert(6 == mbgl::util::default_styles::numOrderedStyles,
 
 - (void)setImage:(MGLImage *)image forName:(NSString *)name
 {
+    MGLLogDebug(@"Setting image: %@ forName: %@", image, name);
     if (!image) {
         [NSException raise:NSInvalidArgumentException
                     format:@"Cannot assign nil image to “%@”.", name];
@@ -510,6 +499,7 @@ static_assert(6 == mbgl::util::default_styles::numOrderedStyles,
 
 - (void)removeImageForName:(NSString *)name
 {
+    MGLLogDebug(@"Removing imageForName: %@", name);
     if (!name) {
         [NSException raise:NSInvalidArgumentException
                     format:@"Cannot remove image with nil name."];
@@ -520,6 +510,7 @@ static_assert(6 == mbgl::util::default_styles::numOrderedStyles,
 
 - (MGLImage *)imageForName:(NSString *)name
 {
+    MGLLogDebug(@"Querying imageForName: %@", name);
     if (!name) {
         [NSException raise:NSInvalidArgumentException
                     format:@"Cannot get image with nil name."];

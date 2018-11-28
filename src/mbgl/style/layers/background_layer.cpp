@@ -11,11 +11,27 @@
 #include <mbgl/style/conversion_impl.hpp>
 #include <mbgl/util/fnv_hash.hpp>
 
+#include <mbgl/renderer/layers/render_background_layer.hpp>
+
 namespace mbgl {
 namespace style {
 
+
+// static
+const LayerTypeInfo* BackgroundLayer::Impl::staticTypeInfo() noexcept {
+    const static LayerTypeInfo typeInfo
+        {"background",
+          LayerTypeInfo::Source::NotRequired,
+          LayerTypeInfo::Pass3D::NotRequired,
+          LayerTypeInfo::Layout::NotRequired,
+          LayerTypeInfo::Clipping::NotRequired
+        };
+    return &typeInfo;
+}
+
+
 BackgroundLayer::BackgroundLayer(const std::string& layerID)
-    : Layer(makeMutable<Impl>(LayerType::Background, layerID, std::string())) {
+    : Layer(makeMutable<Impl>(layerID, std::string())) {
 }
 
 BackgroundLayer::BackgroundLayer(Immutable<Impl> impl_)
@@ -270,16 +286,20 @@ Mutable<Layer::Impl> BackgroundLayer::mutableBaseImpl() const {
     return staticMutableCast<Layer::Impl>(mutableImpl());
 }
 
-BackgroundLayerFactory::~BackgroundLayerFactory() = default;
-
-const char* BackgroundLayerFactory::type() const {
-    return "background";
-}
-
-std::unique_ptr<style::Layer> BackgroundLayerFactory::createLayer(const std::string& id, const conversion::Convertible& value) {
-    (void)value;
-    return std::unique_ptr<style::Layer>(new BackgroundLayer(id));
-}
-
 } // namespace style
+
+const style::LayerTypeInfo* BackgroundLayerFactory::getTypeInfo() const noexcept {
+    return style::BackgroundLayer::Impl::staticTypeInfo();
+}
+
+std::unique_ptr<style::Layer> BackgroundLayerFactory::createLayer(const std::string& id, const style::conversion::Convertible& value) noexcept {
+    (void)value;
+    return std::unique_ptr<style::Layer>(new style::BackgroundLayer(id));
+}
+
+std::unique_ptr<RenderLayer> BackgroundLayerFactory::createRenderLayer(Immutable<style::Layer::Impl> impl) noexcept {
+    assert(impl->getTypeInfo() == getTypeInfo());
+    return std::make_unique<RenderBackgroundLayer>(staticImmutableCast<style::BackgroundLayer::Impl>(std::move(impl)));
+}
+
 } // namespace mbgl

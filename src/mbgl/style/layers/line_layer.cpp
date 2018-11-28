@@ -11,11 +11,27 @@
 #include <mbgl/style/conversion_impl.hpp>
 #include <mbgl/util/fnv_hash.hpp>
 
+#include <mbgl/renderer/layers/render_line_layer.hpp>
+
 namespace mbgl {
 namespace style {
 
+
+// static
+const LayerTypeInfo* LineLayer::Impl::staticTypeInfo() noexcept {
+    const static LayerTypeInfo typeInfo
+        {"line",
+          LayerTypeInfo::Source::Required,
+          LayerTypeInfo::Pass3D::NotRequired,
+          LayerTypeInfo::Layout::Required,
+          LayerTypeInfo::Clipping::Required
+        };
+    return &typeInfo;
+}
+
+
 LineLayer::LineLayer(const std::string& layerID, const std::string& sourceID)
-    : Layer(makeMutable<Impl>(LayerType::Line, layerID, sourceID)) {
+    : Layer(makeMutable<Impl>(layerID, sourceID)) {
 }
 
 LineLayer::LineLayer(Immutable<Impl> impl_)
@@ -828,24 +844,28 @@ Mutable<Layer::Impl> LineLayer::mutableBaseImpl() const {
     return staticMutableCast<Layer::Impl>(mutableImpl());
 }
 
-LineLayerFactory::~LineLayerFactory() = default;
+} // namespace style
 
-const char* LineLayerFactory::type() const {
-    return "line";
+const style::LayerTypeInfo* LineLayerFactory::getTypeInfo() const noexcept {
+    return style::LineLayer::Impl::staticTypeInfo();
 }
 
-std::unique_ptr<style::Layer> LineLayerFactory::createLayer(const std::string& id, const conversion::Convertible& value) {
+std::unique_ptr<style::Layer> LineLayerFactory::createLayer(const std::string& id, const style::conversion::Convertible& value) noexcept {
     optional<std::string> source = getSource(value);
     if (!source) {
         return nullptr;
     }
 
-    std::unique_ptr<style::Layer> layer = std::unique_ptr<style::Layer>(new LineLayer(id, *source));
+    std::unique_ptr<style::Layer> layer = std::unique_ptr<style::Layer>(new style::LineLayer(id, *source));
     if (!initSourceLayerAndFilter(layer.get(), value)) {
         return nullptr;
     }
     return layer;
 }
 
-} // namespace style
+std::unique_ptr<RenderLayer> LineLayerFactory::createRenderLayer(Immutable<style::Layer::Impl> impl) noexcept {
+    assert(impl->getTypeInfo() == getTypeInfo());
+    return std::make_unique<RenderLineLayer>(staticImmutableCast<style::LineLayer::Impl>(std::move(impl)));
+}
+
 } // namespace mbgl

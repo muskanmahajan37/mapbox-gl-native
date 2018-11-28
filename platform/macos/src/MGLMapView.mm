@@ -102,10 +102,10 @@ const CGFloat MGLAnnotationImagePaddingForCallout = 4;
 const NSEdgeInsets MGLMapViewOffscreenAnnotationPadding = NSEdgeInsetsMake(-30.0f, -30.0f, -30.0f, -30.0f);
 
 /// Unique identifier representing a single annotation in mbgl.
-typedef uint32_t MGLAnnotationTag;
+typedef uint64_t MGLAnnotationTag;
 
 /// An indication that the requested annotation was not found or is nonexistent.
-enum { MGLAnnotationTagNotFound = UINT32_MAX };
+enum { MGLAnnotationTagNotFound = UINT64_MAX };
 
 /// Mapping from an annotation tag to metadata about that annotation, including
 /// the annotation itself.
@@ -222,23 +222,31 @@ public:
 
 - (instancetype)initWithFrame:(NSRect)frameRect {
     if (self = [super initWithFrame:frameRect]) {
+        MGLLogInfo(@"Starting %@ initialization.", NSStringFromClass([self class]));
+        MGLLogDebug(@"Initializing frame: %@", NSStringFromRect(frameRect));
         [self commonInit];
         self.styleURL = nil;
+        MGLLogInfo(@"Finalizing %@ initialization.", NSStringFromClass([self class]));
     }
     return self;
 }
 
 - (instancetype)initWithFrame:(NSRect)frame styleURL:(nullable NSURL *)styleURL {
     if (self = [super initWithFrame:frame]) {
+        MGLLogInfo(@"Starting %@ initialization.", NSStringFromClass([self class]));
+        MGLLogDebug(@"Initializing frame: %@ styleURL: %@", NSStringFromRect(frame), styleURL);
         [self commonInit];
         self.styleURL = styleURL;
+        MGLLogInfo(@"Finalizing %@ initialization.", NSStringFromClass([self class]));
     }
     return self;
 }
 
 - (instancetype)initWithCoder:(nonnull NSCoder *)decoder {
     if (self = [super initWithCoder:decoder]) {
+        MGLLogInfo(@"Starting %@ initialization.", NSStringFromClass([self class]));
         [self commonInit];
+        MGLLogInfo(@"Finalizing %@ initialization.", NSStringFromClass([self class]));
     }
     return self;
 }
@@ -258,21 +266,19 @@ public:
 }
 
 - (void)commonInit {
-    MGLLogInfo(@"Initializing.");
     _isTargetingInterfaceBuilder = NSProcessInfo.processInfo.mgl_isInterfaceBuilderDesignablesAgent;
 
     // Set up cross-platform controllers and resources.
     _mbglView = new MGLMapViewImpl(self);
 
     // Delete the pre-offline ambient cache at
-    // ~/Library/Caches/com.mapbox.sdk.ios/cache.db.
+    // ~/Library/Caches/com.mapbox.MapboxGL/cache.db.
     NSURL *cachesDirectoryURL = [[NSFileManager defaultManager] URLForDirectory:NSCachesDirectory
                                                                        inDomain:NSUserDomainMask
                                                               appropriateForURL:nil
                                                                          create:NO
                                                                           error:nil];
-    cachesDirectoryURL = [cachesDirectoryURL URLByAppendingPathComponent:
-                          [NSBundle mgl_frameworkBundle].bundleIdentifier];
+    cachesDirectoryURL = [cachesDirectoryURL URLByAppendingPathComponent:@"com.mapbox.MapboxGL"];
     NSURL *legacyCacheURL = [cachesDirectoryURL URLByAppendingPathComponent:@"cache.db"];
     [[NSFileManager defaultManager] removeItemAtURL:legacyCacheURL error:NULL];
 
@@ -319,7 +325,6 @@ public:
     _mbglMap->jumpTo(options);
     _pendingLatitude = NAN;
     _pendingLongitude = NAN;
-    MGLLogInfo(@"Initialization completed.");
 }
 
 - (mbgl::Size)size {
@@ -633,7 +638,7 @@ public:
     if (!styleURL) {
         styleURL = [MGLStyle streetsStyleURLWithVersion:MGLStyleDefaultVersion];
     }
-    
+    MGLLogDebug(@"Setting styleURL: %@", styleURL);
     // An access token is required to load any default style, including Streets.
     if (![MGLAccountManager accessToken] && [styleURL.scheme isEqualToString:@"mapbox"]) {
         NSLog(@"Cannot set the style URL to %@ because no access token has been specified.", styleURL);
@@ -646,6 +651,7 @@ public:
 }
 
 - (IBAction)reloadStyle:(__unused id)sender {
+    MGLLogInfo(@"Reloading style.");
     NSURL *styleURL = self.styleURL;
     _mbglMap->getStyle().loadURL("");
     self.styleURL = styleURL;
@@ -979,10 +985,12 @@ public:
 }
 
 - (void)setCenterCoordinate:(CLLocationCoordinate2D)centerCoordinate {
+    MGLLogDebug(@"Setting centerCoordinate: %@", MGLStringFromCLLocationCoordinate2D(centerCoordinate));
     [self setCenterCoordinate:centerCoordinate animated:NO];
 }
 
 - (void)setCenterCoordinate:(CLLocationCoordinate2D)centerCoordinate animated:(BOOL)animated {
+    MGLLogDebug(@"Setting centerCoordinate: %@ animated: %@", MGLStringFromCLLocationCoordinate2D(centerCoordinate), MGLStringFromBOOL(animated));
     [self willChangeValueForKey:@"centerCoordinate"];
     _mbglMap->setLatLng(MGLLatLngFromLocationCoordinate2D(centerCoordinate),
                         MGLEdgeInsetsFromNSEdgeInsets(self.contentInsets),
@@ -1028,10 +1036,12 @@ public:
 }
 
 - (void)setZoomLevel:(double)zoomLevel {
+    MGLLogDebug(@"Setting zoomLevel: %f", zoomLevel);
     [self setZoomLevel:zoomLevel animated:NO];
 }
 
 - (void)setZoomLevel:(double)zoomLevel animated:(BOOL)animated {
+    MGLLogDebug(@"Setting zoomLevel: %f animated: %@", zoomLevel, MGLStringFromBOOL(animated));
     [self willChangeValueForKey:@"zoomLevel"];
     _mbglMap->setZoom(zoomLevel,
                       MGLEdgeInsetsFromNSEdgeInsets(self.contentInsets),
@@ -1055,11 +1065,13 @@ public:
 
 - (void)setMinimumZoomLevel:(double)minimumZoomLevel
 {
+    MGLLogDebug(@"Setting minimumZoomLevel: %f", minimumZoomLevel);
     _mbglMap->setMinZoom(minimumZoomLevel);
 }
 
 - (void)setMaximumZoomLevel:(double)maximumZoomLevel
 {
+    MGLLogDebug(@"Setting maximumZoomLevel: %f", maximumZoomLevel);
     _mbglMap->setMaxZoom(maximumZoomLevel);
 }
 
@@ -1096,10 +1108,12 @@ public:
 }
 
 - (void)setDirection:(CLLocationDirection)direction {
+    MGLLogDebug(@"Setting direction: %f", direction);
     [self setDirection:direction animated:NO];
 }
 
 - (void)setDirection:(CLLocationDirection)direction animated:(BOOL)animated {
+    MGLLogDebug(@"Setting direction: %f animated: %@", direction, MGLStringFromBOOL(animated));
     [self willChangeValueForKey:@"direction"];
     _mbglMap->setBearing(direction,
                          MGLEdgeInsetsFromNSEdgeInsets(self.contentInsets),
@@ -1121,14 +1135,17 @@ public:
 }
 
 - (void)setCamera:(MGLMapCamera *)camera {
+    MGLLogDebug(@"Setting camera: %@", camera);
     [self setCamera:camera animated:NO];
 }
 
 - (void)setCamera:(MGLMapCamera *)camera animated:(BOOL)animated {
+    MGLLogDebug(@"Setting camera: %@ animated: %@", camera, MGLStringFromBOOL(animated));
     [self setCamera:camera withDuration:animated ? MGLAnimationDuration : 0 animationTimingFunction:nil completionHandler:NULL];
 }
 
 - (void)setCamera:(MGLMapCamera *)camera withDuration:(NSTimeInterval)duration animationTimingFunction:(nullable CAMediaTimingFunction *)function completionHandler:(nullable void (^)(void))completion {
+    MGLLogDebug(@"Setting camera: %@ duration: %f animationTimingFunction: %@", camera, duration, function);
     [self setCamera:camera withDuration:duration animationTimingFunction:function edgePadding:self.contentInsets completionHandler:completion];
 }
 
@@ -1166,14 +1183,17 @@ public:
 }
 
 - (void)flyToCamera:(MGLMapCamera *)camera completionHandler:(nullable void (^)(void))completion {
+    MGLLogDebug(@"Setting flyToCamera: %@ completionHandler: %@", camera, completion);
     [self flyToCamera:camera withDuration:-1 completionHandler:completion];
 }
 
 - (void)flyToCamera:(MGLMapCamera *)camera withDuration:(NSTimeInterval)duration completionHandler:(nullable void (^)(void))completion {
+    MGLLogDebug(@"Setting flyToCamera: %@ withDuration: %f completionHandler: %@", camera, duration, completion);
     [self flyToCamera:camera withDuration:duration peakAltitude:-1 completionHandler:completion];
 }
 
 - (void)flyToCamera:(MGLMapCamera *)camera withDuration:(NSTimeInterval)duration peakAltitude:(CLLocationDistance)peakAltitude completionHandler:(nullable void (^)(void))completion {
+    MGLLogDebug(@"Setting flyToCamera: %@ withDuration: %f peakAltitude: %f completionHandler: %@", camera, duration, peakAltitude, completion);
     mbgl::AnimationOptions animationOptions;
     if (duration >= 0) {
         animationOptions.duration = MGLDurationFromTimeInterval(duration);
@@ -1238,10 +1258,12 @@ public:
 }
 
 - (void)setVisibleCoordinateBounds:(MGLCoordinateBounds)bounds {
+    MGLLogDebug(@"Setting visibleCoordinateBounds: %@", MGLStringFromCoordinateBounds(bounds));
     [self setVisibleCoordinateBounds:bounds animated:NO];
 }
 
 - (void)setVisibleCoordinateBounds:(MGLCoordinateBounds)bounds animated:(BOOL)animated {
+    MGLLogDebug(@"Setting visibleCoordinateBounds: %@ animated: %@", MGLStringFromCoordinateBounds(bounds), MGLStringFromBOOL(animated));
     [self setVisibleCoordinateBounds:bounds edgePadding:NSEdgeInsetsZero animated:animated];
 }
 
@@ -1520,7 +1542,7 @@ public:
     if (hitAnnotationTag != MGLAnnotationTagNotFound) {
         if (hitAnnotationTag != _selectedAnnotationTag) {
             id <MGLAnnotation> annotation = [self annotationWithTag:hitAnnotationTag];
-            NSAssert(annotation, @"Cannot select nonexistent annotation with tag %u", hitAnnotationTag);
+            NSAssert(annotation, @"Cannot select nonexistent annotation with tag %llu", hitAnnotationTag);
             [self selectAnnotation:annotation atPoint:gesturePoint];
         }
     } else {
@@ -1843,7 +1865,7 @@ public:
             }
 
             MGLAnnotationContext annotationContext = _annotationContextsByAnnotationTag.at(annotationTag);
-            NSAssert(annotationContext.annotation, @"Missing annotation for tag %u.", annotationTag);
+            NSAssert(annotationContext.annotation, @"Missing annotation for tag %llu.", annotationTag);
             if (annotationContext.annotation)
             {
                 [annotations addObject:annotationContext.annotation];
@@ -2218,6 +2240,7 @@ public:
 }
 
 - (void)setSelectedAnnotation:(id <MGLAnnotation>)annotation {
+    MGLLogDebug(@"Selecting annotation: %@", annotation);
     [self willChangeValueForKey:@"selectedAnnotations"];
     _selectedAnnotationTag = [self annotationTagForAnnotation:annotation];
     if (_selectedAnnotationTag != MGLAnnotationTagNotFound) {
@@ -2232,6 +2255,7 @@ public:
 }
 
 - (void)setSelectedAnnotations:(NSArray<id <MGLAnnotation>> *)selectedAnnotations {
+    MGLLogDebug(@"Selecting: %lu annotations", selectedAnnotations.count);
     if (!selectedAnnotations.count) {
         return;
     }
@@ -2252,16 +2276,19 @@ public:
 
 - (void)selectAnnotation:(id <MGLAnnotation>)annotation
 {
+    MGLLogDebug(@"Selecting annotation: %@", annotation);
     [self selectAnnotation:annotation atPoint:NSZeroPoint];
 }
 
 - (void)selectAnnotation:(id <MGLAnnotation>)annotation atPoint:(NSPoint)gesturePoint
 {
+    MGLLogDebug(@"Selecting annotation: %@ atPoint: %@", annotation, NSStringFromPoint(gesturePoint));
     [self selectAnnotation:annotation atPoint:gesturePoint moveOnscreen:YES animateSelection:YES];
 }
 
 - (void)selectAnnotation:(id <MGLAnnotation>)annotation atPoint:(NSPoint)gesturePoint moveOnscreen:(BOOL)moveOnscreen animateSelection:(BOOL)animateSelection
 {
+    MGLLogDebug(@"Selecting annotation: %@ atPoint: %@ moveOnscreen: %@ animateSelection: %@", annotation, NSStringFromPoint(gesturePoint), MGLStringFromBOOL(moveOnscreen), MGLStringFromBOOL(animateSelection));
     id <MGLAnnotation> selectedAnnotation = self.selectedAnnotation;
     if (annotation == selectedAnnotation) {
         return;
@@ -2373,6 +2400,7 @@ public:
 }
 
 - (void)showAnnotations:(NSArray<id <MGLAnnotation>> *)annotations animated:(BOOL)animated {
+    MGLLogDebug(@"Showing: %lu annotations animated: %@", annotations.count, MGLStringFromBOOL(animated));
     CGFloat maximumPadding = 100;
     CGFloat yPadding = (NSHeight(self.bounds) / 5 <= maximumPadding) ? (NSHeight(self.bounds) / 5) : maximumPadding;
     CGFloat xPadding = (NSWidth(self.bounds) / 5 <= maximumPadding) ? (NSWidth(self.bounds) / 5) : maximumPadding;
@@ -2598,11 +2626,13 @@ public:
 }
 
 - (void)addOverlay:(id <MGLOverlay>)overlay {
+    MGLLogDebug(@"Adding overlay: %@", overlay);
     [self addOverlays:@[overlay]];
 }
 
 - (void)addOverlays:(NSArray<id <MGLOverlay>> *)overlays
 {
+    MGLLogDebug(@"Adding: %lu overlays", overlays.count);
 #if DEBUG
     for (id <MGLOverlay> overlay in overlays) {
         NSAssert([overlay conformsToProtocol:@protocol(MGLOverlay)], @"Overlay does not conform to MGLOverlay");
@@ -2612,10 +2642,12 @@ public:
 }
 
 - (void)removeOverlay:(id <MGLOverlay>)overlay {
+    MGLLogDebug(@"Removing overlay: %@", overlay);
     [self removeOverlays:@[overlay]];
 }
 
 - (void)removeOverlays:(NSArray<id <MGLOverlay>> *)overlays {
+    MGLLogDebug(@"Removing: %lu overlays", overlays.count);
 #if DEBUG
     for (id <MGLOverlay> overlay in overlays) {
         NSAssert([overlay conformsToProtocol:@protocol(MGLOverlay)], @"Overlay does not conform to MGLOverlay");
@@ -2697,14 +2729,17 @@ public:
 #pragma mark Data
 
 - (NSArray<id <MGLFeature>> *)visibleFeaturesAtPoint:(NSPoint)point {
+    MGLLogDebug(@"Querying visibleFeaturesAtPoint: %@", NSStringFromPoint(point));
     return [self visibleFeaturesAtPoint:point inStyleLayersWithIdentifiers:nil];
 }
 
 - (NSArray<id <MGLFeature>> *)visibleFeaturesAtPoint:(CGPoint)point inStyleLayersWithIdentifiers:(NSSet<NSString *> *)styleLayerIdentifiers {
+    MGLLogDebug(@"Querying visibleFeaturesAtPoint: %@ inStyleLayersWithIdentifiers: %@", NSStringFromPoint(point), styleLayerIdentifiers);
     return [self visibleFeaturesAtPoint:point inStyleLayersWithIdentifiers:styleLayerIdentifiers predicate:nil];
 }
 
 - (NSArray<id <MGLFeature>> *)visibleFeaturesAtPoint:(NSPoint)point inStyleLayersWithIdentifiers:(NSSet<NSString *> *)styleLayerIdentifiers predicate:(NSPredicate *)predicate {
+    MGLLogDebug(@"Querying visibleFeaturesAtPoint: %@ inStyleLayersWithIdentifiers: %@ predicate: %@", NSStringFromPoint(point), styleLayerIdentifiers, predicate);
     // Cocoa origin is at the lower-left corner.
     mbgl::ScreenCoordinate screenCoordinate = { point.x, NSHeight(self.bounds) - point.y };
 
@@ -2728,14 +2763,17 @@ public:
 }
 
 - (NSArray<id <MGLFeature>> *)visibleFeaturesInRect:(NSRect)rect {
+    MGLLogDebug(@"Querying visibleFeaturesInRect: %@", NSStringFromRect(rect));
     return [self visibleFeaturesInRect:rect inStyleLayersWithIdentifiers:nil];
 }
 
 - (NSArray<id <MGLFeature>> *)visibleFeaturesInRect:(CGRect)rect inStyleLayersWithIdentifiers:(NSSet<NSString *> *)styleLayerIdentifiers {
+    MGLLogDebug(@"Querying visibleFeaturesInRect: %@ inStyleLayersWithIdentifiers: %@", NSStringFromRect(rect), styleLayerIdentifiers);
     return [self visibleFeaturesInRect:rect inStyleLayersWithIdentifiers:styleLayerIdentifiers predicate:nil];
 }
 
 - (NSArray<id <MGLFeature>> *)visibleFeaturesInRect:(NSRect)rect inStyleLayersWithIdentifiers:(NSSet<NSString *> *)styleLayerIdentifiers predicate:(NSPredicate *)predicate {
+    MGLLogDebug(@"Querying visibleFeaturesInRect: %@ inStyleLayersWithIdentifiers: %@ predicate: %@", NSStringFromRect(rect), styleLayerIdentifiers, predicate);
     // Cocoa origin is at the lower-left corner.
     mbgl::ScreenBox screenBox = {
         { NSMinX(rect), NSHeight(self.bounds) - NSMaxY(rect) },

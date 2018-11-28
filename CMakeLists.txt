@@ -10,6 +10,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Required to avoid warnings when setting visibility
 cmake_policy(SET CMP0063 NEW)
@@ -19,7 +20,9 @@ set(CMAKE_C_VISIBILITY_PRESET hidden)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
 
-option(WITH_CXX11ABI "Use the C++11 ABI" OFF)
+set(CMAKE_OSX_DEPLOYMENT_TARGET 10.11)
+
+option(WITH_CXX11ABI "Use the C++11 ABI" ON)
 option(WITH_COVERAGE "Enable coverage reports" OFF)
 option(WITH_OSMESA   "Use OSMesa headless backend" OFF)
 option(WITH_EGL      "Use EGL backend" OFF)
@@ -31,8 +34,8 @@ if (WITH_ERROR)
     set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} -Werror")
 endif()
 
-include(cmake/vendor.cmake)
 include(cmake/mbgl.cmake)
+include(cmake/vendor.cmake)
 include(cmake/mason.cmake)
 include(cmake/xcode.cmake)
 
@@ -97,6 +100,7 @@ set(CMAKE_C_FLAGS_SANITIZE "${CMAKE_C_FLAGS_SANITIZE} -O1 -g -fno-omit-frame-poi
 
 if(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=unknown-warning-option")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-error=unknown-warning-option")
 elseif(CMAKE_COMPILER_IS_GNUCXX)
     # https://svn.boost.org/trac/boost/ticket/9240
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fext-numeric-literals")

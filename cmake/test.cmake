@@ -8,6 +8,8 @@ else()
     add_executable(mbgl-test ${MBGL_TEST_FILES})
 endif()
 
+# GCC 8+ trips over GTest's way of defining Test functions
+target_compile_options(mbgl-test PRIVATE -Wno-shadow)
 
 if(NOT WITH_NODEJS)
     target_compile_definitions(mbgl-test PRIVATE "-DTEST_HAS_SERVER=0")
@@ -27,9 +29,8 @@ target_link_libraries(mbgl-test PRIVATE
     mbgl-core
     shelf-pack-cpp
     unique_resource
+    pixelmatch-cpp
 )
-
-target_add_mason_package(mbgl-test PRIVATE pixelmatch)
 
 mbgl_platform_test()
 

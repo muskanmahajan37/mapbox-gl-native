@@ -12,6 +12,7 @@
 #import "NSValue+MGLAdditions.h"
 #import "NSDate+MGLAdditions.h"
 #import "NSData+MGLAdditions.h"
+#import "MGLLoggingConfiguration_Private.h"
 
 #if TARGET_OS_IPHONE || TARGET_OS_SIMULATOR
 #import "MMEConstants.h"
@@ -87,6 +88,7 @@ const MGLExceptionName MGLUnsupportedRegionTypeException = @"MGLUnsupportedRegio
 #endif
 
 - (void)setDelegate:(id<MGLOfflineStorageDelegate>)newValue {
+    MGLLogDebug(@"Setting delegate: %@", newValue);
     _delegate = newValue;
     if ([self.delegate respondsToSelector:@selector(offlineStorage:URLForResourceOfKind:withURL:)]) {
         _mbglResourceTransform = std::make_unique<mbgl::Actor<mbgl::ResourceTransform>>(*mbgl::Scheduler::GetCurrent(), [offlineStorage = self](auto kind_, const std::string&& url_) -> std::string {
@@ -276,6 +278,7 @@ const MGLExceptionName MGLUnsupportedRegionTypeException = @"MGLUnsupportedRegio
 #pragma mark Offline merge methods
 
 - (void)addContentsOfFile:(NSString *)filePath withCompletionHandler:(MGLBatchedOfflinePackAdditionCompletionHandler)completion {
+    MGLLogDebug(@"Adding contentsOfFile: %@ completionHandler: %@", filePath, completion);
     NSURL *fileURL = [NSURL fileURLWithPath:filePath];
     
     [self addContentsOfURL:fileURL withCompletionHandler:completion];
@@ -283,7 +286,7 @@ const MGLExceptionName MGLUnsupportedRegionTypeException = @"MGLUnsupportedRegio
 }
 
 - (void)addContentsOfURL:(NSURL *)fileURL withCompletionHandler:(MGLBatchedOfflinePackAdditionCompletionHandler)completion {
-    
+    MGLLogDebug(@"Adding contentsOfURL: %@ completionHandler: %@", fileURL, completion);
     NSFileManager *fileManager = [NSFileManager defaultManager];
     
     if (!fileURL.isFileURL) {
@@ -359,6 +362,7 @@ const MGLExceptionName MGLUnsupportedRegionTypeException = @"MGLUnsupportedRegio
 #pragma mark Pack management methods
 
 - (void)addPackForRegion:(id <MGLOfflineRegion>)region withContext:(NSData *)context completionHandler:(MGLOfflinePackAdditionCompletionHandler)completion {
+    MGLLogDebug(@"Adding packForRegion: %@ contextLength: %lu completionHandler: %@", region, (unsigned long)context.length, completion);
     __weak MGLOfflineStorage *weakSelf = self;
     [self _addPackForRegion:region withContext:context completionHandler:^(MGLOfflinePack * _Nullable pack, NSError * _Nullable error) {
         pack.state = MGLOfflinePackStateInactive;
@@ -409,6 +413,7 @@ const MGLExceptionName MGLUnsupportedRegionTypeException = @"MGLUnsupportedRegio
 }
 
 - (void)removePack:(MGLOfflinePack *)pack withCompletionHandler:(MGLOfflinePackRemovalCompletionHandler)completion {
+    MGLLogDebug(@"Removing pack: %@ completionHandler: %@", pack, completion);
     [[self mutableArrayValueForKey:@"packs"] removeObject:pack];
     [self _removePack:pack withCompletionHandler:^(NSError * _Nullable error) {
         if (completion) {
@@ -441,6 +446,7 @@ const MGLExceptionName MGLUnsupportedRegionTypeException = @"MGLUnsupportedRegio
 }
 
 - (void)reloadPacks {
+    MGLLogInfo(@"Reloading packs.");
     [self getPacksWithCompletionHandler:^(NSArray<MGLOfflinePack *> *packs, __unused NSError * _Nullable error) {
         for (MGLOfflinePack *pack in self.packs) {
             [pack invalidate];
@@ -474,6 +480,7 @@ const MGLExceptionName MGLUnsupportedRegionTypeException = @"MGLUnsupportedRegio
 }
 
 - (void)setMaximumAllowedMapboxTiles:(uint64_t)maximumCount {
+    MGLLogDebug(@"Setting maximumAllowedMapboxTiles: %lu", (unsigned long)maximumCount);
     _mbglFileSource->setOfflineMapboxTileCountLimit(maximumCount);
 }
 
@@ -490,14 +497,14 @@ const MGLExceptionName MGLUnsupportedRegionTypeException = @"MGLUnsupportedRegio
     return attributes.fileSize;
 }
 
--(void)putResourceWithUrl:(NSURL *)url data:(NSData *)data modified:(NSDate * _Nullable)modified expires:(NSDate * _Nullable)expires etag:(NSString * _Nullable)etag mustRevalidate:(BOOL)mustRevalidate {
-    mbgl::Resource resource(mbgl::Resource::Kind::Unknown, [[url absoluteString] UTF8String]);
+- (void)preloadData:(NSData *)data forURL:(NSURL *)url modificationDate:(nullable NSDate *)modified expirationDate:(nullable NSDate *)expires eTag:(nullable NSString *)eTag mustRevalidate:(BOOL)mustRevalidate {
+    mbgl::Resource resource(mbgl::Resource::Kind::Unknown, url.absoluteString.UTF8String);
     mbgl::Response response;
     response.data = std::make_shared<std::string>(static_cast<const char*>(data.bytes), data.length);
     response.mustRevalidate = mustRevalidate;
     
-    if (etag) {
-        response.etag = std::string([etag UTF8String]);
+    if (eTag) {
+        response.etag = std::string(eTag.UTF8String);
     }
     
     if (modified) {
@@ -511,5 +518,8 @@ const MGLExceptionName MGLUnsupportedRegionTypeException = @"MGLUnsupportedRegio
     _mbglFileSource->put(resource, response);
 }
 
+- (void)putResourceWithUrl:(NSURL *)url data:(NSData *)data modified:(nullable NSDate *)modified expires:(nullable NSDate *)expires etag:(nullable NSString *)etag mustRevalidate:(BOOL)mustRevalidate {
+    [self preloadData:data forURL:url modificationDate:modified expirationDate:expires eTag:etag mustRevalidate:mustRevalidate];
+}
 
 @end
